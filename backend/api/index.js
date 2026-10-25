@@ -55,12 +55,25 @@ async function handler(req,res){
    for(let i=0;i<20;i++){code=Array.from({length:6},()=>alphabet[randomInt(alphabet.length)]).join('');if(await db.cmd('SET','z:reserve:'+code,'1','NX','EX',TTL)==='OK')break;code=null;}
    if(!code)error('Não foi possível gerar o código',503);
    const next={code,owner:c.id,members:[],streamers:[]};c.room=code;c.approved=true;
-   await db.set(KEY.room(code),next,TTL);await persist(c);
+   await db.set(KEY.room(code),next,TTL);
+   const confirmed=await db.json(KEY.room(code));
+   if(!confirmed||confirmed.code!==code||confirmed.owner!==c.id){
+     await db.del('z:reserve:'+code);
+     error('Não foi possível confirmar a persistência da sala no Redis',503);
+   }
+   await persist(c);
    return end(res,200,{code,role:'owner'});
  }
  if(route==='join'){
    if(c.room)error('Saia da sala atual primeiro');
-   const code=String(b.code||'').trim().toUpperCase();const r=await db.json(KEY.room(code));if(!r)error('Sala não encontrada ou encerrada',404);
+   const code=String(b.code||'').trim().toUpperCase();
+   let r=await db.json(KEY.room(code));
+   // Tolerate brief propagation delays without disguising a truly missing room.
+   for(let attempt=0;!r&&attempt<3;attempt++){
+     await new Promise(resolve=>setTimeout(resolve,150));
+     r=await db.json(KEY.room(code));
+   }
+   if(!r)error('Sala não encontrada ou encerrada',404);
    if(r.members.length>=5)error('Sala cheia',409);
    if(!r.members.includes(c.id))r.members.push(c.id);
    c.room=code;c.approved=false;await db.set(KEY.room(code),r,TTL);await persist(c);

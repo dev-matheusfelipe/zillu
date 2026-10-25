@@ -3,7 +3,7 @@ class RedisStore {
  constructor(env=process.env){this.url=env.KV_REST_API_URL||env.UPSTASH_REDIS_REST_URL;this.token=env.KV_REST_API_TOKEN||env.UPSTASH_REDIS_REST_TOKEN;if(!this.url||!this.token)throw Object.assign(new Error('Configure UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN'),{status:503});}
  async cmd(...args){const res=await fetch(this.url.replace(/\/$/,'')+'/',{method:'POST',headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(7000)});if(!res.ok)throw Error('Banco temporariamente indisponível ('+res.status+')');const body=await res.json();if(body.error)throw Error('Falha na operação de armazenamento');return body.result;}
  get(k){return this.cmd('GET',k)}
- set(k,v,ttl=120){return this.cmd('SET',k,JSON.stringify(v),'EX',ttl)}
+ async set(k,v,ttl=120){const result=await this.cmd('SET',k,JSON.stringify(v),'EX',ttl);if(result!=='OK')throw Object.assign(new Error('Redis não confirmou a gravação'),{status:503});return result}
  async json(k){const v=await this.get(k);return v?JSON.parse(v):null}
  del(k){return this.cmd('DEL',k)}
  exists(k){return this.cmd('EXISTS',k)}
