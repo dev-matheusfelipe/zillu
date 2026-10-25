@@ -1,0 +1,40 @@
+// LiveKit SFU: mídia encaminhada pelo servidor, autorização continua no backend Zullu.
+let mediaMode='p2p',livekitRoom=null,localPublication=null,sfuConnecting=null;
+async function connectSFU(){
+ if(mediaMode!=='sfu'||livekitRoom)return;
+ if(sfuConnecting)return sfuConnecting;
+ sfuConnecting=(async()=>{
+  if(!window.LivekitClient)throw Error('Cliente LiveKit indisponível. Execute npm install e npm run build:web.');
+  const conf=await api('sfu-token');
+  const room=new window.LivekitClient.Room({adaptiveStream:true,dynacast:true,stopLocalTrackOnUnpublish:false});
+  room.on(window.LivekitClient.RoomEvent.TrackSubscribed,(track,pub,participant)=>{
+   if(track.kind!=='video')return;
+   remoteStreams.set(participant.identity,new MediaStream([track.mediaStreamTrack]));renderStreams();
+  });
+  room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed,(track,pub,participant)=>{
+   remoteStreams.delete(participant.identity);renderStreams();
+  });
+  room.on(window.LivekitClient.RoomEvent.ParticipantDisconnected,participant=>{
+   remoteStreams.delete(participant.identity);renderStreams();
+  });
+  room.on(window.LivekitClient.RoomEvent.Disconnected,()=>{
+   if(livekitRoom===room){livekitRoom=null;localPublication=null;remoteStreams.clear();renderStreams();status('SFU desconectado');}
+  });
+  await room.connect(conf.url,conf.token,{autoSubscribe:true});
+  livekitRoom=room;
+  status('Conectado ao SFU');
+ })();
+ try{await sfuConnecting;}finally{sfuConnecting=null;}
+}
+async function publishSFU(stream){
+ await connectSFU();
+ const track=stream.getVideoTracks()[0];
+ if(!track)throw Error('Nenhuma faixa de vídeo disponível');
+ if(localPublication){await livekitRoom.localParticipant.unpublishTrack(localPublication.track);localPublication=null;}
+ const localTrack=new window.LivekitClient.LocalVideoTrack(track,undefined,false);
+ localTrack.contentHint='detail';
+ localPublication=await livekitRoom.localParticipant.publishTrack(localTrack,{source:window.LivekitClient.Track.Source.ScreenShare,simulcast:false,videoEncoding:{maxBitrate:profile.bitrate,maxFramerate:profile.fps}});
+}
+async function unpublishSFU(){
+ if(livekitRoom&&localPublication){try{await livekitRoom.localParticipant.unpublishTrack(localPublication.track);}catch{}localPublication=null;}
+}

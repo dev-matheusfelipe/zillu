@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.livekit.example
+*.log
+public/livekit.bundle.js

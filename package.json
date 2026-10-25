@@ -1,0 +1,39 @@
+{
+  "name": "zullu-screen",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Compartilhamento de tela por código",
+  "main": "electron.cjs",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server.cjs",
+    "test": "node --test test/*.test.cjs",
+    "dist:win": "npm run build:web && electron-builder --win portable --x64",
+    "build:web": "node scripts/build-web.cjs"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.25.12"
+  },
+  "build": {
+    "appId": "studio.rizzer.zullu.screen",
+    "productName": "Zullu",
+    "asar": true,
+    "files": [
+      "electron.cjs",
+      "preload.cjs",
+      "server.cjs",
+      "public/**/*",
+      "package.json",
+      "sfu/token.cjs"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "livekit-client": "^2.17.0"
+  }
+}

@@ -1,0 +1,23 @@
+/* Zullu 0.4.0: hierarquia visual, grid compacto, legibilidade e comportamento responsivo */
+:root{--z-blue:#4987f5;--z-border:#29364b}
+header{height:72px;max-width:none;padding:0 clamp(22px,4vw,68px);background:#0e1724}
+main{max-width:1540px;padding:clamp(24px,4vw,52px)}
+#lobby{gap:clamp(24px,5vw,90px)}
+.setup{padding:20px 30px 30px;box-shadow:none;border-color:var(--z-border)}
+.setup-tabs{margin:16px 0 26px}
+.setup h2{margin:8px 0 8px}
+.room-layout{grid-template-columns:minmax(0,1fr) 290px;align-items:start}
+.stage-area{min-width:0}
+.stage-controls{border:1px solid var(--z-border);background:#121c2a;border-radius:12px;padding:14px 18px}
+.grid-layout{grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr))}
+.stream-card{background:#080f19;border-color:#26374c}
+.stream-card:hover{border-color:var(--z-blue)}
+.stream-overlay{background:#0c1623df}
+.focus-main{min-height:320px;aspect-ratio:16/9;border:1px solid var(--z-border)}
+.focus-strip{min-height:110px}
+aside{box-shadow:none}
+.room-top{flex-wrap:wrap;gap:16px}
+.room-actions{flex-wrap:wrap}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7eacff;outline-offset:2px}
+@media(max-width:1050px){.room-layout{grid-template-columns:1fr}.room-top h1{font-size:27px}}
+@media(max-width:650px){.stage-controls,.control-group{align-items:stretch;flex-direction:column}.control-group select{width:100%}.control-buttons button{flex:1;min-width:140px}.room-actions{width:100%}.room-code{flex:1}.grid-layout{grid-template-columns:1fr}.focus-main{min-height:220px}}
