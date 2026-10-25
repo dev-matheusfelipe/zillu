@@ -25,6 +25,13 @@ async function handler(req,res){
  }
  const token=(req.headers.authorization||'').replace(/^Bearer /,'');
  let c=await db.json(KEY.session(token));if(!c)error('Sessão expirada. Entre novamente.',401);
+ if(route==='diagnose-room'){
+   const code=String(b.code||'').trim().toUpperCase();
+   if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))error('Código inválido');
+   const exists=Boolean(await db.json(KEY.room(code)));
+   const ttl=await db.cmd('TTL',KEY.room(code));
+   return end(res,200,{code,exists,ttl,store:db.fingerprint});
+ }
  const persist=async x=>db.set(KEY.session(x.token),x,TTL);
  const getMember=async id=>{const t=await db.json(KEY.participant(id));return t?db.json(KEY.session(t)):null};
  const emit=async(x,event)=>db.enqueue(x.id,event);
