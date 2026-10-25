@@ -3,3 +3,16 @@
 
 .grid-layout[data-count="3"]>.stream-card:last-child{grid-column:1/-1}
 .stream-card:not(.is-paused) .stream-overlay span:first-child:before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:#7edbb2;margin-right:7px;vertical-align:middle}
+
+/* Interface corrections: quiet lobby, app tooltips and equal 16:9 stream tiles. */
+#window-titlebar{height:32px;flex:0 0 32px;display:flex;align-items:center;padding:0 14px;background:#10141c;app-region:drag;-webkit-app-region:drag;font-size:11px;color:#bac4d4;user-select:none}
+body:has(#lobby:not([hidden]))>header{display:none}
+body.is-fullscreen #window-titlebar{display:none}
+body:has(#lobby:not([hidden])) footer>span:first-child{visibility:hidden}
+.grid-layout{display:flex;flex-wrap:wrap;align-content:center;justify-content:center;align-items:center;overflow:hidden}
+.grid-layout>.stream-card{flex:0 0 var(--stream-width,0px);width:var(--stream-width,0px);height:auto;aspect-ratio:16/9}
+.focus-layout{align-items:center;justify-content:center;width:100%}
+.focus-main{flex:0 0 auto;aspect-ratio:16/9;max-width:100%}
+.focus-strip{width:100%;justify-content:center;flex:0 0 100px}
+.focus-strip .stream-card{aspect-ratio:16/9;height:100px}
+#app-tooltip{position:fixed;z-index:1000;pointer-events:none;background:#edf1f8;color:#121923;border:1px solid #c6d1e1;border-radius:7px;padding:7px 11px;font:500 11px Poppins,sans-serif;box-shadow:0 5px 18px #0005;max-width:calc(100vw - 16px);width:max-content}

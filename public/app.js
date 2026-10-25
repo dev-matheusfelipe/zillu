@@ -4,6 +4,7 @@ let token = null, base = '', role = null, roomCode = '', myStream = null, iceSer
 const peers = new Map(); // key: remoteParticipantId, value: RTCPeerConnection
 const remoteStreams = new Map(); // key: remoteParticipantId, value: MediaStream
 const requests = new Map();
+let diagnosticMessage='';
 const remotePaused=new Set();
 const participantNames = new Map();
 let statsTimer = null, audioEnabled = false, soundEnabled = true, layoutMode = 'grid', focusedStreamId = null;
@@ -26,7 +27,7 @@ async function connectSFU(){
   room.on(window.LivekitClient.RoomEvent.TrackSubscribed,(track,pub,participant)=>{
    if(track.kind!=='video')return;
    remoteStreams.set(participant.identity,new MediaStream([track.mediaStreamTrack]));
-   $('diag-msg').textContent='Vídeo remoto recebido do LiveKit: '+participant.identity.slice(0,8);
+   diagnosticMessage='Vídeo remoto recebido do LiveKit: '+participant.identity.slice(0,8);
    console.info('[Zillu] Vídeo remoto inscrito', {participant:participant.identity,trackSid:pub.trackSid});
    renderStreams();
   });
@@ -44,7 +45,7 @@ async function connectSFU(){
   room.on(window.LivekitClient.RoomEvent.Reconnecting,()=>status('Reconectando…'));
  room.on(window.LivekitClient.RoomEvent.Reconnected,()=>status('Conectado'));
  await room.connect(conf.url,conf.token,{autoSubscribe:true});
-  $('diag-msg').textContent='Conectado ao LiveKit. Nenhuma tela publicada ainda.';
+  diagnosticMessage='Conectado ao LiveKit. Nenhuma tela publicada ainda.';
   livekitRoom=room;
   status('Conectado');
  })();
@@ -60,7 +61,7 @@ async function publishSFU(stream){
  try {
   localPublication=await livekitRoom.localParticipant.publishTrack(localTrack,{source:window.LivekitClient.Track.Source.ScreenShare,simulcast:false,videoEncoding:{maxBitrate:profile.bitrate,maxFramerate:profile.fps}});
   console.info('[Zillu] Tela publicada no LiveKit', {sid:localPublication.trackSid,source:localPublication.source});
-  $('diag-msg').textContent='Tela publicada no LiveKit (SFU). Aguarde um participante para validar o recebimento.';
+  diagnosticMessage='Tela publicada no LiveKit (SFU). Aguarde um participante para validar o recebimento.';
  } catch(error) {
   console.error('[Zillu] Falha ao publicar a tela no LiveKit',error);
   throw error;
@@ -203,7 +204,7 @@ async function stopMyStream() {
  if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; }
  try { await api('stop-stream'); } catch {}
  $('share-screen').hidden = false;
- $('diag-msg').textContent='Transmissão encerrada.';toast('Compartilhamento encerrado.');
+ diagnosticMessage='Transmissão encerrada.';toast('Compartilhamento encerrado.');
  $('stop-stream').hidden = true;
  $('pause').hidden = true;
  $('swap-screen').hidden = true;
@@ -319,6 +320,7 @@ function renderStreams() {
  updateLayout();
 }
 function updateLayout() {
+ requestAnimationFrame(fitStreamCards);
  setControl('toggle-layout',layoutMode==='grid'?'focus':'grid',layoutMode==='grid'?'Modo Foco':'Modo Grade');
  $('toggle-layout').setAttribute('aria-pressed',String(layoutMode==='focus'));
  $('share-screen').hidden=!!myStream;
@@ -489,7 +491,7 @@ $('pause').onclick=async()=>{
 };
 $('toggle-layout').onclick = () => { layoutMode = layoutMode === 'grid' ? 'focus' : 'grid'; $('toggle-layout').textContent = layoutMode === 'grid' ? 'Modo Foco' : 'Modo Grade'; renderStreams(); };
 let fullscreenActive=false;
-function syncFullscreen(active){fullscreenActive=active;$('fullscreen').setAttribute('aria-pressed',String(active));setControl('fullscreen',active?'minimize':'maximize',active?'Sair da tela cheia':'Entrar em tela cheia');}
+function syncFullscreen(active){fullscreenActive=active;document.body.classList.toggle('is-fullscreen',active);$('fullscreen').setAttribute('aria-pressed',String(active));setControl('fullscreen',active?'minimize':'maximize',active?'Sair da tela cheia':'Entrar em tela cheia');}
 $('fullscreen').onclick=async()=>{try{if(window.zulluDesktop?.setFullscreen)syncFullscreen(await window.zulluDesktop.setFullscreen(!fullscreenActive));else{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}}catch{toast('Não foi possível alternar a tela cheia.');}};
 document.addEventListener('fullscreenchange',()=>syncFullscreen(!!document.fullscreenElement));
 window.zulluDesktop?.onFullscreenChanged(syncFullscreen);
@@ -520,11 +522,8 @@ toast(ok ? 'Código de convite copiado!' : 'Não foi possível copiar o código:
 } catch (e) { toast('Erro ao copiar link: ' + e.message); }
 };
 $('cancel-source').onclick = () => $('sources').close();
-$('diag-toggle').onclick=()=>{$('diag-detail').hidden=!$('diag-detail').hidden;$('diag-detail').textContent=JSON.stringify({mediaMode,connection:livekitRoom?.state||'desconectado',screens:remoteStreams.size,local:!!myStream,profile:profile.label},null,2);};
 $('sharing-settings').onclick=()=>$('settings').showModal();
 $('close-settings').onclick=()=>$('settings').close();
-$('open-diagnostics').onclick=()=>$('diagnostics').showModal();
-$('close-diagnostics').onclick=()=>$('diagnostics').close();
 $('toggle-participants').onclick=()=>{const hidden=document.querySelector('.room-layout').classList.toggle('panel-hidden');$('toggle-participants').setAttribute('aria-expanded',String(!hidden));};
 
 $('name').value = localStorage.getItem('zullu-name') || '';
@@ -558,9 +557,48 @@ window.addEventListener('pagehide', () => { if (token) fetch(base + '/api/leave'
 
 const icons={screen:'M3 4h18v12H3z M8 21h8 M12 16v5',settings:'M4 7h16 M4 17h16 M8 4v6 M16 14v6',swap:'M4 7h15l-3-3 M20 17H5l3 3',pause:'M8 5v14 M16 5v14',play:'m8 5 11 7-11 7z',stop:'M6 6h12v12H6z',focus:'M3 4h18v12H3z M15 19h6v3h-6z',grid:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',maximize:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',minimize:'M3 8h5V3 M21 8h-5V3 M3 16h5v5 M21 16h-5v5',leave:'M9 4H4v16h5 M10 12h11 m-5-5 5 5-5 5',users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M17 4a4 4 0 0 1 0 8 M22 21v-2a4 4 0 0 0-3-4',activity:'m2 12 5 0 3-8 4 16 3-8h5'};
 function setControl(id,icon,label){
- const button=$(id);button.replaceChildren();button.title=label;button.setAttribute('aria-label',label);
+ const button=$(id);button.replaceChildren();button.dataset.tooltip=label;button.removeAttribute('title');button.setAttribute('aria-label',label);
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','icon');svg.setAttribute('aria-hidden','true');
  const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',icons[icon]);svg.append(path);button.append(svg);
  if(id==='share-screen'){const text=document.createElement('span');text.textContent=label;button.append(text);}
 }
-for(const [id,icon,label] of [['share-screen','screen','Compartilhar tela'],['sharing-settings','settings','Qualidade e FPS'],['swap-screen','swap','Trocar fonte de captura'],['pause','pause','Pausar transmissão'],['stop-stream','stop','Encerrar transmissão'],['toggle-layout','focus','Modo Foco'],['fullscreen','maximize','Entrar em tela cheia'],['leave','leave','Sair da sala'],['toggle-participants','users','Mostrar ou ocultar participantes'],['open-diagnostics','activity','Diagnóstico de conexão']])setControl(id,icon,label);
+for(const [id,icon,label] of [['share-screen','screen','Compartilhar tela'],['sharing-settings','settings','Qualidade e FPS'],['swap-screen','swap','Trocar fonte de captura'],['pause','pause','Pausar transmissão'],['stop-stream','stop','Encerrar transmissão'],['toggle-layout','focus','Modo Foco'],['fullscreen','maximize','Entrar em tela cheia'],['leave','leave','Sair da sala'],['toggle-participants','users','Mostrar ou ocultar participantes']])setControl(id,icon,label);
+
+// Keep equal landscape tiles within the space available, rather than stretching rows.
+function fitStreamCards(){
+ const grid=$('streams-grid'), count=grid.children.length;
+ if(layoutMode==='grid'&&count){
+  const width=grid.clientWidth,height=grid.clientHeight,gap=10,ratio=16/9;
+  let best=0;
+  for(let columns=1;columns<=count;columns++){
+   const rows=Math.ceil(count/columns);
+   const tileWidth=Math.min((width-gap*(columns-1))/columns,((height-gap*(rows-1))/rows)*ratio);
+   best=Math.max(best,tileWidth);
+  }
+  grid.style.setProperty('--stream-width',Math.floor(best)+'px');
+ }
+ if(layoutMode==='focus'){
+  const container=$('focus-container'),strip=$('focus-strip'),main=container.querySelector('.focus-main');
+  const stripHeight=strip.children.length?strip.getBoundingClientRect().height+10:0;
+  const width=Math.max(0,Math.min(container.clientWidth,(container.clientHeight-stripHeight)*16/9));
+  main.style.width=Math.floor(width)+'px';main.style.height=Math.floor(width*9/16)+'px';
+ }
+}
+new ResizeObserver(fitStreamCards).observe(document.querySelector('.stage-viewport'));
+
+// App-styled tooltips for mouse and keyboard, without the operating system's title popup.
+const tooltip=$('app-tooltip');let tooltipTarget=null;
+function hideTooltip(){tooltip.hidden=true;if(tooltipTarget)tooltipTarget.removeAttribute('aria-describedby');tooltipTarget=null;}
+function showTooltip(target){
+ if(!target||target.disabled)return;hideTooltip();tooltipTarget=target;
+ tooltip.textContent=target.dataset.tooltip;tooltip.hidden=false;target.setAttribute('aria-describedby','app-tooltip');
+ const rect=target.getBoundingClientRect(),box=tooltip.getBoundingClientRect();
+ tooltip.style.left=Math.max(8,Math.min(innerWidth-box.width-8,rect.left+(rect.width-box.width)/2))+'px';
+ tooltip.style.top=(rect.top>box.height+16?rect.top-box.height-10:rect.bottom+10)+'px';
+}
+for(const button of document.querySelectorAll('button[title]')){button.dataset.tooltip=button.title;button.removeAttribute('title');}
+document.addEventListener('pointerover',event=>{const target=event.target.closest('[data-tooltip]');if(target!==tooltipTarget){hideTooltip();showTooltip(target);}});
+document.addEventListener('pointerout',event=>{if(tooltipTarget&&!tooltipTarget.contains(event.relatedTarget))hideTooltip();});
+document.addEventListener('focusin',event=>showTooltip(event.target.closest('[data-tooltip]')));
+document.addEventListener('focusout',hideTooltip);document.addEventListener('pointerdown',hideTooltip);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')hideTooltip();});window.addEventListener('resize',hideTooltip);

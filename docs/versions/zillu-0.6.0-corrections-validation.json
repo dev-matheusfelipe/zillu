@@ -1,0 +1,91 @@
+[
+  {
+    "size": [
+      1280,
+      720
+    ],
+    "lobby": {
+      "overflow": false,
+      "logo": 300
+    }
+  },
+  {
+    "size": [
+      1366,
+      768
+    ],
+    "lobby": {
+      "overflow": false,
+      "logo": 300
+    }
+  },
+  {
+    "size": [
+      1920,
+      1080
+    ],
+    "lobby": {
+      "overflow": false,
+      "logo": 300
+    }
+  },
+  {
+    "size": [
+      860,
+      680
+    ],
+    "lobby": {
+      "overflow": false,
+      "logo": 300
+    }
+  },
+  {
+    "size": [
+      1280,
+      720
+    ],
+    "grid": "1–6 em 16:9, sem overflow"
+  },
+  {
+    "size": [
+      1366,
+      768
+    ],
+    "grid": "1–6 em 16:9, sem overflow"
+  },
+  {
+    "size": [
+      1920,
+      1080
+    ],
+    "grid": "1–6 em 16:9, sem overflow"
+  },
+  {
+    "size": [
+      860,
+      680
+    ],
+    "grid": "1–6 em 16:9, sem overflow"
+  },
+  {
+    "customTooltip": true,
+    "noConnectionDialog": true
+  },
+  {
+    "fullscreen": true
+  },
+  {
+    "escape": true,
+    "button": "false"
+  },
+  {
+    "captureModal": true,
+    "windows": 10
+  },
+  {
+    "monitors": 3
+  },
+  {
+    "errors": []
+  }
+]

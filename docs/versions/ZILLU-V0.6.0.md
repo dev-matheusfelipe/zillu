@@ -62,3 +62,15 @@ Para repetir as validações desktop, instalar Playwright em diretório separado
 - Não foram fornecidas referências adicionais de login/modal além dos símbolos e do pedido textual; o desenho seguiu as regras e a inspiração descritas.
 - A prévia de captura da própria janela pode apresentar recursão visual esperada.
 - Nenhum segredo foi inserido no frontend. Não houve push, publicação no GitHub ou deploy.
+
+
+## Correções após revisão visual
+
+- Removida a faixa com marca/status da tela inicial; o formulário permanece centralizado.
+- Título principal da entrada alterado para `Dev.matheusFelipe`.
+- Título da janela reduzido a `Zillu`. Barra de título integrada com controles nativos do Windows; sem ícone junto ao texto no topo. O ícone oficial continua no executável e na barra de tarefas.
+- Substituídos os tooltips nativos de `title` por tooltips do aplicativo, com Poppins, bordas arredondadas, posicionamento dentro da janela, suporte a hover/foco e fechamento por Esc. Rótulos acessíveis preservados.
+- Removidos botão e modal Conexão. Mensagens técnicas de mídia ficam internas; nenhum endpoint foi alterado.
+- Cards da grade agora mantêm proporção 16:9 e tamanho igual entre si, centralizados no espaço disponível. O tamanho é recalculado ao redimensionar a janela ou recolher participantes, escolhendo a disposição que comporta todas as telas. O vídeo continua com `object-fit: contain`. O vídeo principal do modo foco também mantém 16:9.
+- `npm run build:web` e os 11 testes de `npm test` passaram. A validação Electron confirmou as seis correções, proporção 16:9 para 1–6 cards nas quatro resoluções, tooltips personalizados, ausência do modal, fullscreen/Esc e zero erros JavaScript. Evidências: `zillu-0.6.0-corrections-validation.json` e capturas de entrada/sala com o mesmo prefixo.
+- O Windows bloqueou a substituição de `Zillu-0.6.0-x64.exe` porque a versão anterior estava aberta. A sessão do usuário foi preservada; o builder em espera foi interrompido e o pacote corrigido foi gerado como `dist/Zillu-0.6.0-corrigido-x64.exe`, usando `npm run dist:win -- --config.compression=store --config.artifactName=Zillu-0.6.0-corrigido-x64.exe`. Mantida a versão 0.6.0. Os testes de mídia reais descritos acima pertencem à validação anterior; nesta revisão foram verificados os layouts e controles, sem novo teste de publicação entre instâncias.

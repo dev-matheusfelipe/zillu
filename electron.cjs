@@ -67,7 +67,7 @@ ipcMain.handle('notify-request',(e,name)=>{if(!isTrusted(e))return;if(win.isMini
    console.log('[Electron] Fonte autorizada', {id:source.id,name:source.name});
   }catch(error){console.error('[Electron] Erro na captura',error);callback(null);}
  });
- win=new BrowserWindow({width:1280,height:850,minWidth:860,minHeight:680,title:'Zillu',icon:path.join(__dirname,'public','zillu.ico'),backgroundColor:'#0c111b',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win=new BrowserWindow({width:1280,height:850,minWidth:860,minHeight:680,title:'Zillu',titleBarStyle:'hidden',titleBarOverlay:{color:'#10141c',symbolColor:'#edf1f8',height:32},icon:path.join(__dirname,'public','zillu.ico'),backgroundColor:'#0c111b',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',(event,url)=>{
   const allowed=[localOrigin+'/',remoteUrl&&remoteUrl+'/'].filter(Boolean);
