@@ -1,6 +1,7 @@
 'use strict';
 const {randomBytes,randomInt}=require('node:crypto');
 const {RedisStore}=require('../lib/redis.cjs');
+const {readJsonBody}=require('../lib/body.cjs');
 const {jwtToken}=require('../sfu/token.cjs');
 const ID=()=>randomBytes(24).toString('hex');
 const KEY={session:id=>'z:session:'+id,room:code=>'z:room:'+code,participant:id=>'z:participant:'+id};
@@ -16,7 +17,7 @@ async function handler(req,res){
  const parsed=new URL(req.url,'https://zullu.invalid');
  const route=String(req.query?.route||parsed.searchParams.get('route')||parsed.pathname.replace(/^\/api\//,'')).trim();
  try {
- const db=new RedisStore();const b=typeof req.body==='object'&&req.body!==null&&!Array.isArray(req.body)?req.body:{};
+ const b=await readJsonBody(req);const db=new RedisStore();
  if(route==='health')return end(res,200,{ok:true,service:'zullu-api',mediaMode:mediaMode()});
  if(route==='connect'){
   const s={id:ID(),token:ID(),name:String(b.name||'Visitante').trim().slice(0,32)||'Visitante',room:null,approved:false};
