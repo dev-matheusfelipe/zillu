@@ -1,1 +1,1 @@
-{"name":"zillu-api","version":"0.5.0","private":true,"scripts":{"test":"node --test test/*.test.cjs"},"engines":{"node":">=20"}}
+{"name":"zillu-api","version":"0.5.0","private":true,"scripts":{"test":"node --test test/*.test.cjs"},"engines":{"node":">=20"},"main":"api/index.js"}
