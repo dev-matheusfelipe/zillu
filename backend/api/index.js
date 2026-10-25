@@ -32,7 +32,16 @@ async function handler(req,res){
  const room=c.room?await db.json(KEY.room(c.room)):null;
  const isOwner=room&&c.id===room.owner;
  if(route==='events'){
+   if(c.room&&!room)error('Sala expirada. Crie uma nova sala.',410);
    // Serverless-friendly: one request waits at most 8 seconds.
+   // Keep active owner sessions and room codes alive while the desktop polls.
+   // EXPIRE never creates a deleted room; a stale client cannot resurrect it.
+   await db.cmd('EXPIRE',KEY.session(c.token),TTL);
+   await db.cmd('EXPIRE',KEY.participant(c.id),TTL);
+   if(c.room&&c.id===room?.owner){
+     await db.cmd('EXPIRE',KEY.room(c.room),TTL);
+     await db.cmd('EXPIRE','z:reserve:'+c.room,TTL);
+   }
    const events=[];for(let i=0;i<16;i++){
      let x;while(events.length<50&&(x=await db.pop(c.id)))events.push(x);
      if(events.length)break;
