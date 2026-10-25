@@ -1,0 +1,16 @@
+{
+  "create": true,
+  "join": true,
+  "approval": true,
+  "captureModal": true,
+  "nativeCapture": true,
+  "localPreview": true,
+  "remoteVideo": true,
+  "multipleLiveStreams": true,
+  "focus": true,
+  "swap": true,
+  "paused": true,
+  "streamSurvivedFullscreen": true,
+  "stop": true,
+  "end": true
+}

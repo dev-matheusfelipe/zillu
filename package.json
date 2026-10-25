@@ -1,11 +1,11 @@
 {
-  "name": "zullu-screen",
-  "version": "0.4.0",
+  "name": "zillu-screen",
+  "version": "0.6.0",
   "private": true,
   "description": "Compartilhamento de tela por código",
   "main": "electron.cjs",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run build:web && electron .",
     "server": "node server.cjs",
     "test": "node --test test/*.test.cjs",
     "dist:win": "npm run build:web && electron-builder --win portable --x64",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "studio.rizzer.zullu.screen",
-    "productName": "Zullu",
+    "productName": "Zillu",
     "asar": true,
     "files": [
       "electron.cjs",
@@ -26,11 +26,14 @@
       "server.cjs",
       "public/**/*",
       "package.json",
-      "sfu/token.cjs"
+      "sfu/token.cjs",
+      "cloud-server.cjs"
     ],
     "win": {
-      "target": "portable"
-    }
+      "target": "portable",
+      "icon": "public/zillu.ico"
+    },
+    "artifactName": "Zillu-${version}-${arch}.${ext}"
   },
   "dependencies": {
     "electron-store": "^8.2.0",

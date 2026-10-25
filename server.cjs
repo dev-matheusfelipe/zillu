@@ -224,11 +224,11 @@ return reply(res, 200, { ok: true });
 fail('Rota inválida.', 404);
 }
 if (req.method !== 'GET') fail('Método inválido', 405);
-const files = { '/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/refinements.css':'refinements.css', '/livekit.bundle.js':'livekit.bundle.js' };
+const files = {'/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png', '/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/refinements.css':'refinements.css', '/livekit.bundle.js':'livekit.bundle.js' };
 const file = files[url.pathname];
 if (!file || (file==='livekit.bundle.js' && !fs.existsSync(path.join(__dirname,'public',file)))) fail('Não encontrado', 404);
 res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https: wss: ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
-const contentType = file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8';
+const contentType = file.endsWith('.png') ? 'image/png' : file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8';
 res.writeHead(200, { 'Content-Type': contentType });
 fs.createReadStream(path.join(__dirname, 'public', file)).pipe(res);
 } catch (e) {
@@ -257,6 +257,6 @@ return server;
 }
 if (require.main === module) {
 const s = createServer();
-s.listen(Number(process.env.PORT) || 3210, process.env.HOST || '0.0.0.0', () => console.log(`Zullu v0.4.0 em http://localhost:${s.address().port}`));
+s.listen(Number(process.env.PORT) || 3210, process.env.HOST || '0.0.0.0', () => console.log(`Zillu v0.6.0 em http://localhost:${s.address().port}`));
 }
 module.exports = { createServer };

@@ -10,5 +10,8 @@ contextBridge.exposeInMainWorld('zulluDesktop',{
   connectRemote:(url)=>ipcRenderer.invoke('connect-remote',url),
   disconnectRemote:()=>ipcRenderer.invoke('disconnect-remote'),
   clipboardWrite:(text)=>ipcRenderer.invoke('clipboard-write',text),
+  getFullscreen:()=>ipcRenderer.invoke('get-fullscreen'),
+  setFullscreen:value=>ipcRenderer.invoke('set-fullscreen',value),
+  onFullscreenChanged:callback=>{const listener=(_event,value)=>callback(value);ipcRenderer.on('fullscreen-changed',listener);return()=>ipcRenderer.removeListener('fullscreen-changed',listener);},
   isDesktop:true
 });

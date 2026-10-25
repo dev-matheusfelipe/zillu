@@ -1,0 +1,20 @@
+const { _electron:electron}=require(process.env.ZILLU_PLAYWRIGHT_PATH || 'playwright');
+const fs=require('fs');const env=Object.fromEntries(Object.entries(process.env).filter(([k])=>k!=='ELECTRON_RUN_AS_NODE'));
+(async()=>{let a,b,host,savedConfig;const report={};try{
+ a=await electron.launch({executablePath:require('electron'),args:['.'],env});b=await electron.launch({executablePath:require('electron'),args:['.'],env});
+ host=await a.firstWindow();const guest=await b.firstWindow();await host.waitForLoadState('domcontentloaded');await guest.waitForLoadState('domcontentloaded');savedConfig=await host.evaluate(()=>window.zulluDesktop.getConfig());
+ await host.fill('#name','Validação Zillu');await host.click('#create');await host.locator('#room').waitFor({state:'visible',timeout:30000});await host.waitForFunction(()=>livekitRoom?.state==='connected',{timeout:30000});report.create=true;
+ const code=await host.locator('#copy').textContent();await guest.fill('#name','Participante teste');await guest.click('#tab-view');await guest.fill('#code',code);await guest.click('#join');await host.locator('#requests-list .primary').waitFor({timeout:30000});report.join=true;await host.locator('#requests-list .primary').click();await guest.waitForFunction(()=>livekitRoom?.state==='connected',{timeout:30000});report.approval=true;
+ await host.click('#share-screen');await host.locator('#sources').waitFor({state:'visible',timeout:15000});report.captureModal=true;
+ await host.click('#source-monitors');await host.locator('.source-option').first().click();await host.click('#confirm-source');await host.waitForFunction(()=>!!localPublication&&!!myStream,{timeout:30000});report.nativeCapture=true;report.localPreview=await host.locator('.stream-card-local video').evaluate(el=>el.srcObject.getVideoTracks()[0].readyState==='live');
+ await guest.waitForFunction(()=>remoteStreams.size>0,{timeout:30000});report.remoteVideo=await guest.locator('#streams-grid video').first().evaluate(async el=>{await el.play();return el.videoWidth>0;});
+ await guest.click('#share-screen');await guest.locator('#sources').waitFor({state:'visible'});await guest.click('#source-monitors');await guest.locator('.source-option').first().click();await guest.click('#confirm-source');
+ await guest.waitForFunction(()=>!!localPublication);await host.waitForFunction(()=>remoteStreams.size===1);report.multipleLiveStreams=await host.locator('#streams-grid .stream-card').count()===2;
+ await host.click('#toggle-layout');report.focus=await host.locator('#focus-strip .stream-card').count()===1;await host.locator('#focus-strip .stream-card').first().click();
+ await host.click('#swap-screen');await host.locator('#sources').waitFor({state:'visible'});await host.click('#source-monitors');await host.locator('.source-option').first().click();await host.click('#confirm-source');await host.waitForFunction(()=>!!myStream&&!!localPublication);report.swap=true;
+ await guest.click('#stop-stream');await host.waitForFunction(()=>remoteStreams.size===0);
+ await host.click('#pause');report.paused=await host.evaluate(()=>paused&&!myStream.getVideoTracks()[0].enabled);await host.click('#pause');
+ await host.click('#fullscreen');await host.waitForTimeout(400);await host.keyboard.press('Escape');await host.waitForTimeout(400);report.streamSurvivedFullscreen=await host.evaluate(()=>myStream.getVideoTracks()[0].readyState==='live'&&!!localPublication);
+ await host.click('#stop-stream');await guest.waitForFunction(()=>remoteStreams.size===0);report.stop=true;
+ await host.click('#leave');await guest.locator('#lobby').waitFor({state:'visible',timeout:20000});report.end=true;
+ }catch(e){report.error=e.message;console.error(e)}finally{if(savedConfig&&host)await host.evaluate(cfg=>window.zulluDesktop.setConfig({lastName:cfg.lastName,lastQuality:cfg.lastQuality,lastFps:cfg.lastFps}),savedConfig).catch(()=>{});fs.writeFileSync('docs/versions/zillu-0.6.0-live-validation.json',JSON.stringify(report,null,2));console.log(report);await b?.close();await a?.close();}})();

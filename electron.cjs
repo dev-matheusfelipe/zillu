@@ -1,7 +1,14 @@
 const {app,BrowserWindow,ipcMain,desktopCapturer,session}=require('electron');
 const path=require('node:path');
-const {createServer}=require('./server.cjs');
+const {createCloudServer}=require('./cloud-server.cjs');
 const Store=require('electron-store');
+// Preserve pre-0.6 preferences even though the displayed product name changed.
+const fs=require('node:fs');
+for(const legacyName of ['Zullu','zullu-screen']){
+ const legacyPath=path.join(app.getPath('appData'),legacyName);
+ if(fs.existsSync(path.join(legacyPath,'zullu-config.json'))){app.setPath('userData',legacyPath);break;}
+}
+
 const store=new Store({name:'zullu-config',defaults:{serverUrl:'',lastName:'',lastQuality:'low',lastFps:30}});
 let server,win,localOrigin,remoteUrl=null,selected;
 const sameOrigin=(value,allowed)=>{try{return !!allowed&&new URL(value).origin===new URL(allowed).origin;}catch{return false;}};
@@ -18,20 +25,15 @@ const isCaptureTrusted=request=>{
    sameOrigin(frame.url,request.securityOrigin);
 };
 app.whenReady().then(async()=>{
- server=createServer();
+ server=createCloudServer();
  await new Promise((res,rej)=>{server.once('error',rej);server.listen(0,'127.0.0.1',res);});
  localOrigin=`http://127.0.0.1:${server.address().port}`;
- ipcMain.handle('get-config',(e)=>{if(!isTrusted(e))throw Error('Origem inválida');return {serverUrl:store.get('serverUrl'),lastName:store.get('lastName'),lastQuality:store.get('lastQuality'),lastFps:store.get('lastFps')};});
+ ipcMain.handle('get-config',(e)=>{if(!isTrusted(e))throw Error('Origem inválida');return {serverUrl:'',lastName:store.get('lastName'),lastQuality:store.get('lastQuality'),lastFps:store.get('lastFps')};});
  ipcMain.handle('set-config',(e,data)=>{if(!isTrusted(e))throw Error('Origem inválida');const allowed={lastName:32,lastQuality:32,lastFps:3};if(!data||typeof data!=='object')throw Error('Configuração inválida');for(const[k,v]of Object.entries(data)){if(!(k in allowed))throw Error('Campo inválido');if(typeof v==='string'&&v.length>allowed[k])throw Error('Valor muito longo');store.set(k,v);}return true;});
- ipcMain.handle('connect-remote',(e,url)=>{
-  if(!isTrusted(e)){console.error('[IPC] connect-remote rejeitado: origem não confiável',e.senderFrame?.url);throw Error('Origem inválida');}
-  try{const parsed=new URL(url);if(parsed.protocol!=='https:'&&!(['localhost','127.0.0.1'].includes(parsed.hostname)&&parsed.protocol==='http:'))throw Error();if(parsed.username||parsed.password||parsed.search||parsed.hash||parsed.pathname!=='/')throw Error();}catch{throw Error('URL inválida ou insegura');}
-  remoteUrl=new URL(url).origin;
-  store.set('serverUrl',remoteUrl);
-  console.log('[Electron] Navegando para remoto:',remoteUrl);
-  return win.loadURL(remoteUrl+'/').then(()=>{console.log('[Electron] loadURL concluído:',remoteUrl);return true;}).catch(err=>{console.error('[Electron] loadURL falhou:',err);throw err;});
- });
- ipcMain.handle('disconnect-remote',async e=>{if(!isTrusted(e))throw Error('Origem inválida');remoteUrl=null;return win.loadURL(localOrigin+'/');});
+ ipcMain.handle('connect-remote',()=>{throw Error('A API do Zillu já está configurada automaticamente.');});
+ ipcMain.handle('disconnect-remote',()=>true);
+ ipcMain.handle('get-fullscreen',e=>{if(!isTrusted(e))throw Error('Origem inválida');return win.isFullScreen();});
+ ipcMain.handle('set-fullscreen',(e,value)=>{if(!isTrusted(e)||typeof value!=='boolean')throw Error('Origem inválida');win.setFullScreen(value);return win.isFullScreen();});
  ipcMain.handle('sources',async e=>{if(!isTrusted(e))throw Error('Origem inválida');return(await desktopCapturer.getSources({types:['screen','window'],thumbnailSize:{width:240,height:135}})).map(s=>({id:s.id,name:s.name,thumbnail:s.thumbnail.toDataURL()}));});
  ipcMain.handle('select-source',(e,id)=>{if(!isTrusted(e)||typeof id!=='string'||id.length>256)throw Error('Origem inválida');selected=id;});
  ipcMain.handle('replace-source',async(e,id)=>{if(!isTrusted(e)||typeof id!=='string'||id.length>256)throw Error('Origem inválida');selected=id;return{ok:true,requiresRecapture:true};});
@@ -65,13 +67,16 @@ ipcMain.handle('notify-request',(e,name)=>{if(!isTrusted(e))return;if(win.isMini
    console.log('[Electron] Fonte autorizada', {id:source.id,name:source.name});
   }catch(error){console.error('[Electron] Erro na captura',error);callback(null);}
  });
- win=new BrowserWindow({width:1280,height:850,minWidth:860,minHeight:680,title:'Zullu',backgroundColor:'#0c111b',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win=new BrowserWindow({width:1280,height:850,minWidth:860,minHeight:680,title:'Zillu',icon:path.join(__dirname,'public','zillu.ico'),backgroundColor:'#0c111b',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',(event,url)=>{
   const allowed=[localOrigin+'/',remoteUrl&&remoteUrl+'/'].filter(Boolean);
   if(!allowed.some(a=>sameOrigin(url,a)))event.preventDefault();
  });
+ win.on('enter-full-screen',()=>win.webContents.send('fullscreen-changed',true));
+ win.on('leave-full-screen',()=>win.webContents.send('fullscreen-changed',false));
+ win.webContents.on('before-input-event',(event,input)=>{if(input.type==='keyDown'&&input.key==='Escape'&&win.isFullScreen()){event.preventDefault();win.setFullScreen(false);}});
  await win.loadURL(localOrigin+'/');
 });
 app.on('window-all-closed',()=>app.quit());
-app.on('before-quit',()=>{server?.close();server?.closeAllConnections();});
+app.on('before-quit',()=>{server?.close();server?.closeAllConnections?.();});

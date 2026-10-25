@@ -8,7 +8,7 @@ if errorlevel 1 (
  exit /b 1
 )
 if not exist node_modules\electron\dist\electron.exe (
- echo Preparando o Zullu. A primeira abertura requer internet e pode demorar.
+ echo Preparando o Zillu. A primeira abertura requer internet e pode demorar.
  call npm ci
  if errorlevel 1 (
   echo Nao foi possivel instalar as dependencias. Confira a conexao.
