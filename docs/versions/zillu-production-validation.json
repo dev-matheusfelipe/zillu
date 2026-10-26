@@ -1,0 +1,16 @@
+{
+  "api": "https://zillu-backend.vercel.app",
+  "version": "0.6.2",
+  "checks": {
+    "capacityTwelve": true,
+    "pendingCannotReceiveToken": true,
+    "adminApproval": true,
+    "permissionsEnforced": true,
+    "approvedTokenLimited": true,
+    "removalBlocksNewToken": true,
+    "ownerExitKeepsRoom": true,
+    "transferEnforced": true,
+    "explicitEnd": true
+  },
+  "temporaryRoomClosed": true
+}

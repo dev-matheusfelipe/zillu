@@ -4,7 +4,7 @@ Backend Node para Vercel, com Upstash Redis e autorização LiveKit. O gateway E
 
 ## Preparação para deploy
 
-Não houve deploy automático desta versão. Configurar o projeto Vercel com **Root Directory `backend`** e Node >=20. As variáveis continuam sendo `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `LIVEKIT_URL`, `LIVEKIT_API_KEY` e `LIVEKIT_API_SECRET`. `ZULLU_ALLOWED_ORIGIN` é opcional e mantém o nome histórico; não inserir segredos no frontend.
+A API 0.6.2 foi publicada com autorização em 26/10/2026; ver [relatório de publicação](../docs/versions/ZILLU-V0.6.2-PUBLICACAO.md). Configurar o projeto Vercel com **Root Directory `backend`** e Node >=20. As variáveis continuam sendo `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `LIVEKIT_URL`, `LIVEKIT_API_KEY` e `LIVEKIT_API_SECRET`. `ZULLU_ALLOWED_ORIGIN` é opcional e mantém o nome histórico; não inserir segredos no frontend.
 
 Publicar todos os arquivos deste diretório, incluindo `lib/room-service.cjs`, `lib/transaction.cjs`, `lib/livekit.cjs` e a versão atual de `lib/redis.cjs`. Manter o rewrite de `vercel.json`. O Redis precisa aceitar `EVAL`, `SET ... KEEPTTL` e comandos de listas. As mutações são atômicas via Lua/CAS sobre todos os registros observados, incluindo notificações e fila de revogação.
 
