@@ -4,8 +4,8 @@ const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
 const API_ORIGIN='https://zillu-backend.vercel.app';
-const ASSETS={'/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png','/':'index.html','/app.js':'app.js','/style.css':'style.css','/refinements.css':'refinements.css','/livekit.bundle.js':'livekit.bundle.js'};
-const TYPES={'.png':'image/png','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
+const ASSETS={'/icons.svg':'icons.svg','/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png','/':'index.html','/app.js':'app.js','/style.css':'style.css','/refinements.css':'refinements.css','/livekit.bundle.js':'livekit.bundle.js'};
+const TYPES={'.svg':'image/svg+xml','.png':'image/png','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
 function createCloudServer(options={}){
  const fetchImpl=options.fetchImpl||fetch;
  const remote=options.apiOrigin||API_ORIGIN;

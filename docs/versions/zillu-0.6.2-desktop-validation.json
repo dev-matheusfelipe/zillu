@@ -1,0 +1,56 @@
+[
+  {
+    "rolesSynced": true
+  },
+  {
+    "minimizeRestorePreservesFocus": true,
+    "noTracksStopped": true
+  },
+  {
+    "allMinimizedRestored": true,
+    "adminCannotManageOwner": true
+  },
+  {
+    "size": [
+      1280,
+      720
+    ],
+    "iconsAndControls": true
+  },
+  {
+    "size": [
+      1366,
+      768
+    ],
+    "iconsAndControls": true
+  },
+  {
+    "size": [
+      1920,
+      1080
+    ],
+    "iconsAndControls": true
+  },
+  {
+    "size": [
+      860,
+      680
+    ],
+    "iconsAndControls": true
+  },
+  {
+    "lucideSymbols": 28,
+    "audioOffByDefault": true
+  },
+  {
+    "adminApproval": true
+  },
+  {
+    "ownerExitKeepsRoom": true,
+    "adminBecomesOwner": true
+  },
+  {
+    "explicitEnd": true,
+    "errors": []
+  }
+]

@@ -1,0 +1,13 @@
+const {_electron:electron}=require(process.env.ZILLU_PLAYWRIGHT_PATH || 'playwright');
+(async()=>{const app=await electron.launch({executablePath:require('electron'),args:['.'],env:Object.fromEntries(Object.entries(process.env).filter(([k])=>k!=='ELECTRON_RUN_AS_NODE'))});try{const page=await app.firstWindow();const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.waitForLoadState('domcontentloaded');if(!await page.locator('#window-titlebar img').evaluate(e=>e.naturalWidth>0))throw Error('Símbolo ausente');await page.click('#name');
+ await page.evaluate(async()=>{await window.zulluDesktop.getConfig();$('lobby').hidden=true;$('room').hidden=false;const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;canvas.getContext('2d').fillRect(0,0,1280,720);myStream=canvas.captureStream(15);window.testAudioContext=new AudioContext();await testAudioContext.resume();window.testGain=testAudioContext.createGain();const osc=testAudioContext.createOscillator(),dest=testAudioContext.createMediaStreamDestination();osc.connect(testGain);testGain.connect(dest);osc.start();myStream.addTrack(dest.stream.getAudioTracks()[0]);renderStreams();await audioCtx.resume();});
+ await page.waitForFunction(()=>!!document.querySelector('.stream-card.is-audio-active'));await page.click('#mute-stream-audio');await page.waitForFunction(()=>!!document.querySelector('.stream-card.is-audio-muted')&&!document.querySelector('.stream-card.is-audio-active'));
+ await page.click('#toggle-layout');await page.waitForFunction(()=>document.querySelector('.focus-main').classList.contains('is-audio-muted'));
+ await page.click('#mute-stream-audio');await page.waitForFunction(()=>document.querySelector('.focus-main').classList.contains('is-audio-active'));
+ await page.evaluate(()=>testGain.gain.value=0);await page.waitForFunction(()=>!document.querySelector('.focus-main').classList.contains('is-audio-active'));
+ await page.evaluate(async()=>{
+  let publications=0;livekitRoom={localParticipant:{publishTrack:async track=>{publications++;await new Promise(resolve=>setTimeout(resolve,25));return{track};},unpublishTrack:async()=>{}}};
+  await Promise.all([publishAudioSFU(),publishAudioSFU(),publishAudioSFU()]);if(publications!==1)throw Error('Publicação de áudio duplicada');livekitRoom=null;localAudioPublication=null;
+ });
+ if(errors.length)throw Error(errors.join('\n'));console.log('PASS: símbolo no topo, áudio real sintético ativa verde; mudo vermelho em grade/foco; retomar verde; silêncio remove verde; uma única publicação de áudio sob concorrência; zero erros JS.');
+ }finally{await app.close();}})().catch(e=>{console.error(e);process.exit(1)});

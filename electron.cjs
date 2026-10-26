@@ -63,7 +63,8 @@ ipcMain.handle('notify-request',(e,name)=>{if(!isTrusted(e))return;if(win.isMini
    if(!source){console.warn('[Electron] Fonte selecionada não encontrada');return callback(null);}
    // Electron 45: o callback recebe DesktopCapturerSource ({id,name}), NÃO uma MediaStreamTrack.
    // Áudio não solicitado é omitido; false não é um valor válido de audio neste callback.
-   callback({video:source});
+   if(request.audioRequested&&process.platform==='win32')callback({video:source,audio:'loopback'});
+   else callback({video:source});
    console.log('[Electron] Fonte autorizada', {id:source.id,name:source.name});
   }catch(error){console.error('[Electron] Erro na captura',error);callback(null);}
  });

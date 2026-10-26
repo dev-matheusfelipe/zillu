@@ -1,126 +1,40 @@
 'use strict';
-const {randomBytes,randomInt}=require('node:crypto');
 const {RedisStore}=require('../lib/redis.cjs');
 const {readJsonBody}=require('../lib/body.cjs');
-const {jwtToken}=require('../sfu/token.cjs');
-const ID=()=>randomBytes(24).toString('hex');
-const KEY={session:id=>'z:session:'+id,room:code=>'z:room:'+code,participant:id=>'z:participant:'+id};
-const TTL=3600;
-function error(message,status=400){throw Object.assign(new Error(message),{status});}
-async function handler(req,res){
- res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');
- const origin=req.headers.origin;const allowed=process.env.ZULLU_ALLOWED_ORIGIN;
- if(allowed&&origin&&origin!==allowed){res.statusCode=403;return res.end(JSON.stringify({error:'Origem não autorizada'}));}
- if(origin&&allowed===origin)res.setHeader('Access-Control-Allow-Origin',origin);
- if(req.method==='OPTIONS'){res.statusCode=204;return res.end()}
- if(req.method!=='POST'){res.statusCode=405;return res.end(JSON.stringify({error:'Método não permitido'}));}
- const parsed=new URL(req.url,'https://zullu.invalid');
- const route=String(req.query?.route||parsed.searchParams.get('route')||parsed.pathname.replace(/^\/api\//,'')).trim();
- try {
- const b=await readJsonBody(req);const db=new RedisStore();
- if(route==='health')return end(res,200,{ok:true,service:'zullu-api',mediaMode:mediaMode()});
- if(route==='connect'){
-  const s={id:ID(),token:ID(),name:String(b.name||'Visitante').trim().slice(0,32)||'Visitante',room:null,approved:false};
-  await db.set(KEY.session(s.token),s,TTL);await db.set(KEY.participant(s.id),s.token,TTL);
-  return end(res,200,{token:s.token,id:s.id,mediaMode:mediaMode(),iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
- }
- const token=(req.headers.authorization||'').replace(/^Bearer /,'');
- let c=await db.json(KEY.session(token));if(!c)error('Sessão expirada. Entre novamente.',401);
- if(route==='diagnose-room'){
-   const code=String(b.code||'').trim().toUpperCase();
-   if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))error('Código inválido');
-   const exists=Boolean(await db.json(KEY.room(code)));
-   const ttl=await db.cmd('TTL',KEY.room(code));
-   return end(res,200,{code,exists,ttl,store:db.fingerprint});
- }
- const persist=async x=>db.set(KEY.session(x.token),x,TTL);
- const getMember=async id=>{const t=await db.json(KEY.participant(id));return t?db.json(KEY.session(t)):null};
- const emit=async(x,event)=>db.enqueue(x.id,event);
- const state=async room=>{const ids=[room.owner,...room.members];const xs=(await Promise.all(ids.map(getMember))).filter(Boolean);const participants=xs.map(x=>({id:x.id,name:x.name,approved:x.approved,role:x.id===room.owner?'owner':'member',streaming:room.streamers.includes(x.id)}));await Promise.all(xs.filter(x=>x.approved).map(x=>emit(x,{type:'room-state',participants})));};
- const room=c.room?await db.json(KEY.room(c.room)):null;
- const isOwner=room&&c.id===room.owner;
- if(route==='events'){
-   if(c.room&&!room)error('Sala expirada. Crie uma nova sala.',410);
-   // Serverless-friendly: one request waits at most 8 seconds.
-   // Keep active owner sessions and room codes alive while the desktop polls.
-   // EXPIRE never creates a deleted room; a stale client cannot resurrect it.
-   await db.cmd('EXPIRE',KEY.session(c.token),TTL);
-   await db.cmd('EXPIRE',KEY.participant(c.id),TTL);
-   if(c.room&&c.id===room?.owner){
-     await db.cmd('EXPIRE',KEY.room(c.room),TTL);
-     await db.cmd('EXPIRE','z:reserve:'+c.room,TTL);
+const {RoomService,keys,TTL}=require('../lib/room-service.cjs');
+const {livekitConfig,flushMediaJob}=require('../lib/livekit.cjs');
+function createHandler({dbFactory=()=>new RedisStore(),livekit,pollIterations=16,pollDelay=500,mediaCommand}={}){
+ return async function handler(req,res){
+  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');
+  const allowed=process.env.ZULLU_ALLOWED_ORIGIN,origin=req.headers.origin;
+  if(allowed&&origin&&origin!==allowed)return end(res,403,{error:'Origem não autorizada'});
+  if(origin&&origin===allowed)res.setHeader('Access-Control-Allow-Origin',origin);
+  if(req.method==='OPTIONS'){res.statusCode=204;return res.end();}if(req.method!=='POST')return end(res,405,{error:'Método não permitido'});
+  try{
+   const parsed=new URL(req.url,'https://zillu.invalid'),route=String(req.query?.route||parsed.searchParams.get('route')||parsed.pathname.replace(/^\/api\//,'')).trim();
+   const body=await readJsonBody(req),db=dbFactory(),config=livekit===undefined?livekitConfig():livekit;
+   const service=new RoomService(db,{livekit:config});
+   if(route==='health')return end(res,200,{ok:true,service:'zillu-api',apiVersion:'0.6.2',mediaMode:config?'sfu':'p2p'});
+   if(route==='connect')return end(res,200,await service.connect(body.name));
+   const token=(req.headers.authorization||'').replace(/^Bearer /,'');
+   if(route==='diagnose-room'){
+    if(!await db.json(keys.session(token)))return end(res,401,{error:'Sessão expirada'});
+    const code=String(body.code||'').trim().toUpperCase();if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))return end(res,400,{error:'Código inválido'});
+    return end(res,200,{code,exists:Boolean(await db.json(keys.room(code))),ttl:await db.cmd('TTL',keys.room(code)),store:db.fingerprint});
    }
-   const events=[];for(let i=0;i<16;i++){
-     let x;while(events.length<50&&(x=await db.pop(c.id)))events.push(x);
-     if(events.length)break;
-     await new Promise(r=>setTimeout(r,500));
+   if(route==='events'){
+    await service.operate(token,'heartbeat');
+    const mediaReady=await flushMediaJob(db,config,mediaCommand);
+    const current=await db.json(keys.session(token));const events=[];
+    for(let i=0;i<pollIterations;i++){let event;while(events.length<50&&(event=await db.pop(current.id)))events.push(event);if(events.length)break;await new Promise(resolve=>setTimeout(resolve,pollDelay));}
+    if(!mediaReady)console.warn('[Zillu] Há trabalhos de revogação em espera.');
+    return end(res,200,events);
    }
-   return end(res,200,events);
- }
- if(route==='create'){
-   if(c.room)error('Saia da sala atual primeiro');
-   const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let code;
-   for(let i=0;i<20;i++){code=Array.from({length:6},()=>alphabet[randomInt(alphabet.length)]).join('');if(await db.cmd('SET','z:reserve:'+code,'1','NX','EX',TTL)==='OK')break;code=null;}
-   if(!code)error('Não foi possível gerar o código',503);
-   const next={code,owner:c.id,members:[],streamers:[]};c.room=code;c.approved=true;
-   await db.set(KEY.room(code),next,TTL);
-   const confirmed=await db.json(KEY.room(code));
-   if(!confirmed||confirmed.code!==code||confirmed.owner!==c.id){
-     await db.del('z:reserve:'+code);
-     error('Não foi possível confirmar a persistência da sala no Redis',503);
-   }
-   await persist(c);
-   return end(res,200,{code,role:'owner'});
- }
- if(route==='join'){
-   if(c.room)error('Saia da sala atual primeiro');
-   const code=String(b.code||'').trim().toUpperCase();
-   let r=await db.json(KEY.room(code));
-   // Tolerate brief propagation delays without disguising a truly missing room.
-   for(let attempt=0;!r&&attempt<3;attempt++){
-     await new Promise(resolve=>setTimeout(resolve,150));
-     r=await db.json(KEY.room(code));
-   }
-   if(!r)error('Sala não encontrada ou encerrada',404);
-   if(r.members.length>=5)error('Sala cheia',409);
-   if(!r.members.includes(c.id))r.members.push(c.id);
-   c.room=code;c.approved=false;await db.set(KEY.room(code),r,TTL);await persist(c);
-   const host=await getMember(r.owner);if(host)await emit(host,{type:'request',id:c.id,name:c.name});
-   return end(res,200,{code,role:'member'});
- }
- if(!room)error('Você não está em nenhuma sala',404);
- if(route==='approve'||route==='remove'){
-   if(!isOwner)error('Apenas o proprietário pode gerenciar participantes',403);
-   const target=await getMember(String(b.target||''));if(!target||target.room!==room.code||target.id===c.id)error('Participante inválido',404);
-   if(route==='approve'){target.approved=true;await persist(target);await emit(target,{type:'approved'});await state(room);}
-   else {await expel(db,room,target,getMember,emit,persist);await state(room);}
-   return end(res,200,{ok:true});
- }
- if(route==='leave'){
-   if(isOwner){await db.del(KEY.room(room.code));await db.del('z:reserve:'+room.code);for(const id of room.members){const t=await getMember(id);if(t){t.room=null;t.approved=false;await persist(t);await emit(t,{type:'ended'});}}}
-   else {room.members=room.members.filter(id=>id!==c.id);room.streamers=room.streamers.filter(id=>id!==c.id);await db.set(KEY.room(room.code),room,TTL);await state(room);}
-   c.room=null;c.approved=false;await persist(c);return end(res,200,{ok:true});
- }
- if(!c.approved)error('Aprovação necessária',403);
- if(route==='sfu-token'){
-   if(mediaMode()!=='sfu')error('SFU não configurado',503);
-   return end(res,200,{url:process.env.LIVEKIT_URL,token:jwtToken({key:process.env.LIVEKIT_API_KEY,secret:process.env.LIVEKIT_API_SECRET,identity:c.id,name:c.name,room:room.code,ttl:600})});
- }
- if(route==='start-stream'||route==='stop-stream'){
-   const active=route==='start-stream';room.streamers=room.streamers.filter(id=>id!==c.id);if(active)room.streamers.push(c.id);
-   await db.set(KEY.room(room.code),room,TTL);
-   for(const id of [room.owner,...room.members]){const target=await getMember(id);if(target?.approved)await emit(target,{type:active?'stream-started':'stream-ended',participantId:c.id,participantName:c.name});}
-   await state(room);return end(res,200,{ok:true});
- }
- if(route==='signal'){
-   const target=await getMember(String(b.target||''));if(!target||!target.approved||target.room!==room.code||target.id===c.id)error('Destino inválido',403);
-   if(!b.data||!['offer','answer','candidate'].includes(b.data.type))error('Sinal inválido');
-   await emit(target,{type:'signal',from:c.id,data:b.data,streamId:b.streamId||null});return end(res,200,{ok:true});
- }
- error('Rota inválida',404);
- }catch(e){return end(res,e.status||500,{error:e.status?e.message:'Erro interno'});}
+   const result=await service.operate(token,route,body);
+   const mediaReady=await flushMediaJob(db,config,mediaCommand);if(!mediaReady)result.mediaPending=true;
+   return end(res,200,result);
+  }catch(error){return end(res,error.status||500,{error:error.status?error.message:'Erro interno'});}
+ };
 }
-function mediaMode(){return process.env.LIVEKIT_URL&&process.env.LIVEKIT_API_KEY&&process.env.LIVEKIT_API_SECRET?'sfu':'p2p'}
-function end(res,status,result){res.statusCode=status;return res.end(JSON.stringify(result))}
-async function expel(db,room,target,getMember,emit,persist){room.members=room.members.filter(id=>id!==target.id);room.streamers=room.streamers.filter(id=>id!==target.id);target.room=null;target.approved=false;await persist(target);await db.set(KEY.room(room.code),room,TTL);await emit(target,{type:'removed'});}
-module.exports=handler;
+function end(res,status,data){res.statusCode=status;return res.end(JSON.stringify(data));}
+module.exports=createHandler();module.exports.createHandler=createHandler;

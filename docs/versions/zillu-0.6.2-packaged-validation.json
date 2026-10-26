@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "version": "0.6.2",
+    "packaged": true
+  },
+  "assets": {
+    "logo": true,
+    "icons": true,
+    "version": true
+  }
+}

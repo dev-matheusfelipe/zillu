@@ -17,7 +17,7 @@ assert.equal((await post(base,'approve',{target:v2.id},h.token)).status,200);
 assert.equal((await post(base,'start-stream',{},v2.token)).status,200);
 assert.equal((await post(base,'signal',{target:v2.id,data:{type:'offer',sdp:'test'}},v1.token)).status,200);
 assert.equal((await post(base,'stop-stream',{},v1.token)).status,200);
-await post(base,'leave',{},h.token);
+await post(base,'end-room',{},h.token);
 const ev=(await post(base,'events',{},v1.token)).body;
 assert.ok(ev.some(e=>e.type==='ended'));
 }finally{s.closeAllConnections();await new Promise(r=>s.close(r));}

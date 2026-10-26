@@ -16,3 +16,23 @@ body:has(#lobby:not([hidden])) footer>span:first-child{visibility:hidden}
 .focus-strip{width:100%;justify-content:center;flex:0 0 100px}
 .focus-strip .stream-card{aspect-ratio:16/9;height:100px}
 #app-tooltip{position:fixed;z-index:1000;pointer-events:none;background:#edf1f8;color:#121923;border:1px solid #c6d1e1;border-radius:7px;padding:7px 11px;font:500 11px Poppins,sans-serif;box-shadow:0 5px 18px #0005;max-width:calc(100vw - 16px);width:max-content}
+
+#window-titlebar{gap:7px}#window-titlebar img{height:19px;width:19px;object-fit:contain}
+.share-audio{display:flex;align-items:center;gap:8px;margin:10px 0 0;font-size:11px}.share-audio input{width:15px;height:15px;accent-color:#4785fa}
+.stream-card.is-audio-active,.focus-main.is-audio-active{border-color:#55d99b;animation:screen-audio-pulse .8s ease-in-out infinite alternate}
+.stream-card.is-audio-muted,.focus-main.is-audio-muted{border-color:#f06d78;box-shadow:inset 0 0 0 1px #f06d78}
+.audio-state{position:absolute;top:10px;right:10px;padding:5px 8px;border-radius:6px;background:#3b222bf2;color:#ffb6bd;font-size:10px;pointer-events:none}
+@keyframes screen-audio-pulse{from{box-shadow:inset 0 0 0 1px #55d99b55}to{box-shadow:inset 0 0 0 3px #55d99bc0}}
+@media(prefers-reduced-motion:reduce){.stream-card.is-audio-active,.focus-main.is-audio-active{animation:none;box-shadow:inset 0 0 0 2px #55d99b}}
+
+.app-select{position:relative;width:100%}.select-trigger{width:100%;justify-content:space-between;text-align:left;padding:13px 14px;background:#151b25;border-color:#394355;font-size:12px;font-weight:400}.select-trigger[aria-expanded="true"]{border-color:#79a6ff;box-shadow:0 0 0 2px #4785fa33}.select-options{position:absolute;left:0;right:0;top:calc(100% + 6px);padding:5px;background:#202938;border:1px solid #40516a;border-radius:10px;box-shadow:0 10px 28px #0007;z-index:30;max-height:245px;overflow-y:auto}.select-options.opens-up{top:auto;bottom:calc(100% + 6px)}.select-options button{width:100%;display:flex;justify-content:space-between;border:0;border-radius:6px;background:transparent;font-weight:400;text-align:left;padding:11px 10px}.select-options button:hover,.select-options button:focus-visible{background:#2d405e;outline-offset:-2px}.select-options button[aria-selected="true"]{background:#304d7b;color:#dceaff}.select-options button[aria-selected="true"]:after{content:'✓';margin-left:10px;color:#a9caff}.audio-settings{margin-top:22px;padding-top:12px;border-top:1px solid #394355}.audio-muted{color:#ffb6bd;border-color:#a04e59;background:#3b222b}
+
+/* 0.6.2: participant roles, menus and local stream minimization. */
+.control-buttons .icon{display:block;width:20px;height:20px;overflow:visible;flex:0 0 20px}.control-buttons button{line-height:1;flex-shrink:0}
+.participant-item{flex-wrap:nowrap;gap:9px;align-items:center}.participant-info{min-width:0;overflow:hidden}.participant-item strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6}.participant-statuses{display:flex;align-items:center;gap:8px;margin-top:3px}.participant-status{display:inline-flex;color:#a0aabd}.participant-status .icon{width:16px;height:16px}.participant-status.positive{color:#7edbb2}.participant-more{border:0;background:transparent;padding:5px;min-width:28px;flex:0 0 28px}
+.participant-menu{position:fixed;inset:auto;margin:0;background:#1c2533;color:#edf1f8;border:1px solid #40516a;border-radius:10px;padding:5px;min-width:220px;box-shadow:0 10px 28px #0007}.participant-menu button{display:flex;width:100%;justify-content:flex-start;border:0;background:transparent;text-align:left}.participant-menu button:hover{background:#30415c}.participant-menu button.danger{color:#ffa4aa}
+#confirm-action{width:450px}#confirm-action h2{font-size:20px}.confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
+.minimize-stream{position:absolute;top:8px;right:8px;padding:5px;border-color:#49576e;background:#172131ed;z-index:3}.minimize-stream .icon{width:16px;height:16px}.stream-card.is-paused:after{pointer-events:none}.minimized-streams{display:flex;align-items:center;gap:7px;flex:0 0 auto;overflow-x:auto;padding:4px 0}.minimized-streams button{font-size:11px;padding:7px 10px;white-space:nowrap;max-width:220px;overflow:hidden}.minimized-streams .icon{height:15px;width:15px}.audio-state{right:45px}.audio-warning{font-size:10px;max-width:380px;color:#bac4d4;margin:8px 0 0}.dialog-bottom{align-items:flex-end}
+
+.participant-item strong{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.4}
+.control-buttons button[aria-pressed="true"]{background:#263f65;border-color:#5c91de;color:#d9e8ff}.control-buttons button.audio-muted{background:#3b222b;border-color:#a04e59;color:#ffb6bd}

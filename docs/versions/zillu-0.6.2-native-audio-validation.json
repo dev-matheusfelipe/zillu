@@ -1,0 +1,8 @@
+{
+  "videoOnlyByDefault": true,
+  "nativeSystemAudioTrack": true,
+  "microphoneAttempts": 0,
+  "audioTogglePreservesVideo": true,
+  "applicationIsolationSupported": false,
+  "discordExclusionVerified": false
+}

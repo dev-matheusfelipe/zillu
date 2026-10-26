@@ -1,6 +1,6 @@
 {
   "name": "zillu-screen",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "private": true,
   "description": "Compartilhamento de tela por código",
   "main": "electron.cjs",
@@ -27,7 +27,10 @@
       "public/**/*",
       "package.json",
       "sfu/token.cjs",
-      "cloud-server.cjs"
+      "cloud-server.cjs",
+      "backend/api/index.js",
+      "backend/lib/**/*",
+      "backend/sfu/token.cjs"
     ],
     "win": {
       "target": "portable",
