@@ -9,11 +9,11 @@ const {createServer}=require('../server.cjs');
  await page.evaluate(()=>{window.microphoneAttempts=0;navigator.mediaDevices.getUserMedia=async()=>{window.microphoneAttempts++;throw Error('Microfone proibido neste teste');};});
  await page.click('#share-screen');await page.locator('#sources').waitFor({state:'visible'});await page.click('#source-monitors');await page.locator('.source-option').first().click();assert.equal(await page.locator('#share-audio').isChecked(),false);await page.click('#confirm-source');await page.waitForFunction(()=>!!myStream);assert.equal(await page.evaluate(()=>myStream.getAudioTracks().length),0);
  const originalVideo=await page.evaluate(()=>myStream.getVideoTracks()[0].id);
- await page.click('#sharing-settings');await page.check('#settings-share-audio');await page.waitForFunction(()=>myStream?.getAudioTracks().length===1,{timeout:20000});
+ await page.click('#sharing-settings');await page.waitForFunction(()=>$('audio-application').options.length>1);await page.evaluate(()=>{const select=$('audio-application');select.value=select.options[1].value;select.dispatchEvent(new Event('change',{bubbles:true}));});await page.check('#settings-share-audio');await page.waitForFunction(()=>myStream?.getAudioTracks().length===1,{timeout:20000});
  assert.equal(await page.evaluate(()=>myStream.getVideoTracks()[0].id),originalVideo);assert.equal(await page.evaluate(()=>microphoneAttempts),0);assert.equal(await page.evaluate(()=>myStream.getAudioTracks()[0].readyState),'live');
  await page.uncheck('#settings-share-audio');await page.waitForFunction(()=>myStream.getAudioTracks().length===0);assert.equal(await page.evaluate(()=>myStream.getVideoTracks()[0].id),originalVideo);assert.equal(await page.evaluate(()=>myStream.getVideoTracks()[0].readyState),'live');
- const report={videoOnlyByDefault:true,nativeSystemAudioTrack:true,microphoneAttempts:0,audioTogglePreservesVideo:true,applicationIsolationSupported:false,discordExclusionVerified:false};
- require('fs').writeFileSync('docs/versions/zillu-0.6.2-native-audio-validation.json',JSON.stringify(report,null,2));console.log(report);
+ const report={videoOnlyByDefault:true,nativeApplicationAudioTrack:true,microphoneAttempts:0,audioTogglePreservesVideo:true,applicationIsolationSupported:true,discordExclusionVerified:false};
+ require('fs').writeFileSync('docs/versions/zillu-native-application-validation.json',JSON.stringify(report,null,2));console.log(report);
  await page.click('#close-settings');await page.click('#stop-stream');await page.click('#end-room');await page.click('#accept-action');
  }finally{if(saved&&page)await page.evaluate(config=>window.zulluDesktop.setConfig({lastName:config.lastName,lastQuality:config.lastQuality,lastFps:config.lastFps}),saved).catch(()=>{});await app?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exit(1)});

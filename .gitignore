@@ -5,3 +5,5 @@ dist/
 !.env.livekit.example
 *.log
 public/livekit.bundle.js
+
+native/bin/

@@ -1,7 +1,7 @@
 'use strict';
 const {randomBytes,randomInt}=require('node:crypto');
 const {jwtToken}=require('../sfu/token.cjs');
-const TTL=3600,ID=()=>randomBytes(24).toString('hex');
+const TTL=3600,MAX_PARTICIPANTS=12,ID=()=>randomBytes(24).toString('hex');
 const keys={session:t=>'z:session:'+t,participant:id=>'z:participant:'+id,room:code=>'z:room:'+code,reserve:code=>'z:reserve:'+code};
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const unique=xs=>[...new Set(xs.filter(Boolean))];
@@ -23,7 +23,7 @@ class RoomService{
    const member=async id=>{if(!id)return null;if(sessions.has(id))return sessions.get(id);const t=await read(keys.participant(id));const s=t?await read(keys.session(t)):null;if(s)sessions.set(id,s);return s;};
    const emit=(id,event)=>events.push({id,event});
    const save=s=>{put(keys.session(s.token),s);put(keys.participant(s.id),s.token);};
-   if(room){room.admins=room.admins||[];room.denied=room.denied||[];room.members=room.members||[];room.streamers=room.streamers||[];for(const id of roomIds(room))await member(id);}
+   if(room){room.admins=room.admins||[];room.denied=room.denied||[];room.members=room.members||[];room.streamers=room.streamers||[];await Promise.all(roomIds(room).map(member));}
    const detach=(target,type)=>{room.members=room.members.filter(id=>id!==target.id);room.admins=room.admins.filter(id=>id!==target.id);room.streamers=room.streamers.filter(id=>id!==target.id);room.denied=unique([...room.denied,target.id]);if(room.owner===target.id)room.owner=null;target.room=null;target.approved=false;save(target);emit(target.id,{type});jobs.push({method:'RemoveParticipant',room:room.code,identity:target.id,cutoff:Math.floor(Date.now()/1000)+1});};
    const elect=()=>{if(!room.owner){const eligible=roomIds(room).map(id=>sessions.get(id)).filter(s=>s?.approved&&s.room===room.code);const next=eligible.find(s=>room.admins.includes(s.id))||eligible[0];room.owner=next?.id||null;room.admins=room.admins.filter(id=>id!==room.owner);}};
    const finish=()=>{for(const id of roomIds(room)){const s=sessions.get(id);if(s){s.room=null;s.approved=false;save(s);emit(id,{type:'ended'});jobs.push({method:'RemoveParticipant',room:room.code,identity:id,cutoff:Math.floor(Date.now()/1000)+1});}}jobs.push({method:'DeleteRoom',room:room.code});del(keys.room(room.code));put(keys.reserve(room.code),'closed');};
@@ -37,7 +37,7 @@ class RoomService{
    }else if(route==='join'){
     if(actor.room)fail('Saia da sala atual primeiro');if(!room)fail('Sala não encontrada ou encerrada',404);
     if(room.denied.includes(actor.id))fail('Entre novamente para solicitar acesso com uma nova sessão.',403);
-    if(roomIds(room).length>=6)fail('Sala cheia',409);
+    if(roomIds(room).length>=MAX_PARTICIPANTS)fail('Sala cheia',409);
     room.members.push(actor.id);actor.room=room.code;actor.approved=false;save(actor);changed=true;result={code:room.code,role:'member',apiVersion:'0.6.2'};
     for(const id of roomIds(room))if(['owner','admin'].includes(roleOf(room,id)))emit(id,{type:'request',id:actor.id,name:actor.name});
    }else if(route==='heartbeat'){
@@ -99,4 +99,4 @@ class RoomService{
   fail('A sala está ocupada. Tente novamente.',409);
  }
 }
-module.exports={RoomService,keys,TTL,roleOf};
+module.exports={RoomService,keys,TTL,roleOf,MAX_PARTICIPANTS};

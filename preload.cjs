@@ -13,5 +13,10 @@ contextBridge.exposeInMainWorld('zulluDesktop',{
   getFullscreen:()=>ipcRenderer.invoke('get-fullscreen'),
   setFullscreen:value=>ipcRenderer.invoke('set-fullscreen',value),
   onFullscreenChanged:callback=>{const listener=(_event,value)=>callback(value);ipcRenderer.on('fullscreen-changed',listener);return()=>ipcRenderer.removeListener('fullscreen-changed',listener);},
+  audioApplications:()=>ipcRenderer.invoke('audio-applications'),
+  startApplicationAudio:pid=>ipcRenderer.invoke('start-app-audio',pid),
+  stopApplicationAudio:()=>ipcRenderer.invoke('stop-app-audio'),
+  onApplicationAudio:callback=>{const listener=(_event,data)=>callback(data);ipcRenderer.on('app-audio-data',listener);return()=>ipcRenderer.removeListener('app-audio-data',listener);},
+  onApplicationAudioEnded:callback=>{const listener=(_event,data)=>callback(data);ipcRenderer.on('app-audio-ended',listener);return()=>ipcRenderer.removeListener('app-audio-ended',listener);},
   isDesktop:true
 });

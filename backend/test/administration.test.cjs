@@ -77,3 +77,7 @@ test('RoomService signs removal and deletion with the grants required by LiveKit
  await roomCommand(livekit,{method:'RemoveParticipant',room:'ABC234',identity:'participant',cutoff:123},capture);await roomCommand(livekit,{method:'DeleteRoom',room:'ABC234'},capture);
  assert.equal(requests[0].claims.video.roomAdmin,true);assert.equal(requests[0].claims.video.room,'ABC234');assert.equal(requests[0].body.revoke_token_ts,'123');assert.equal(requests[1].claims.video.roomCreate,true);assert.equal(requests[1].claims.video.roomJoin,undefined);assert(requests[1].url.startsWith('https:'));
 });
+
+test('capacity accepts twelve including owner; simultaneous joins cannot exceed the limit',async()=>{
+ const db=new MemoryStore(),service=new RoomService(db);const owner=await service.connect('Dono');const room=await service.operate(owner.token,'create');const members=[];for(let i=0;i<12;i++)members.push(await service.connect('Pessoa '+i));await Promise.all(members.slice(0,11).map(user=>service.operate(user.token,'join',{code:room.code})));assert.equal((await db.json(keys.room(room.code))).members.length,11);await denied(service.operate(members[11].token,'join',{code:room.code}),409);
+});

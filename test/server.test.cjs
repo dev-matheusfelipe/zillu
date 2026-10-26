@@ -28,11 +28,11 @@ try{
 const h=(await post(base,'connect')).body;
 const {code}=(await post(base,'create',{},h.token)).body;
 const members=[];
-for(let i=0;i<6;i++){
+for(let i=0;i<12;i++){
 const m=(await post(base,'connect',{name:`M${i}`})).body;
 members.push(m);
 const res=await post(base,'join',{code},m.token);
-assert.equal(res.status,i<5?200:409);
+assert.equal(res.status,i<11?200:409);
 }
 await post(base,'approve',{target:members[0].id},h.token);
 assert.equal((await post(base,'start-stream',{},members[0].token)).status,200);

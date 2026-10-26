@@ -13,7 +13,7 @@ function createServer(options={}){
   if(url.pathname.startsWith('/api/'))return handler(req,res);
   try{
 if (req.method !== 'GET') fail('Método inválido', 405);
-const files = {'/icons.svg':'icons.svg','/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png', '/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/refinements.css':'refinements.css', '/livekit.bundle.js':'livekit.bundle.js' };
+const files = {'/app-audio-worklet.js':'app-audio-worklet.js','/icons.svg':'icons.svg','/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png', '/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/refinements.css':'refinements.css', '/livekit.bundle.js':'livekit.bundle.js' };
 const file = files[url.pathname];
 if (!file || (file==='livekit.bundle.js' && !fs.existsSync(path.join(__dirname,'public',file)))) fail('Não encontrado', 404);
 res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https: wss: ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");

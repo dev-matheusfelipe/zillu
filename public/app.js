@@ -132,6 +132,7 @@ async function chooseSource(replace = false) {
  const sources = await window.zulluDesktop.sources();
  const audioSupported=await window.zulluDesktop.getSystemAudioSupport();$('share-audio').disabled=!audioSupported;
  if(!audioSupported){$('share-audio').checked=false;$('settings-share-audio').checked=false;}
+ await refreshAudioApplications();
  let selected=null, tab='window';
  $('confirm-source').disabled=true;
  $('source-quality').textContent=profile.label;
@@ -154,7 +155,7 @@ async function chooseSource(replace = false) {
  };
  $('source-windows').click();
  $('confirm-source').onclick=async()=>{
-  if(!selected)return;$('confirm-source').disabled=true;
+  if(!selected)return;if($('share-audio').checked&&!$('audio-application').value){toast('Escolha qual aplicativo deve fornecer o áudio.');return;}$('confirm-source').disabled=true;
   try{audioEnabled=$('share-audio').checked;captureSourceId=selected;await window.zulluDesktop.selectSource(selected);$('sources').close();await startStreaming(replace);toast(replace?'Fonte alterada.':'Transmissão iniciada.');}
   catch(error){toast('Não foi possível compartilhar a tela. Tente selecionar a fonte novamente.');console.error(error);renderStreams();}
   finally{$('confirm-source').disabled=!selected;}
@@ -165,6 +166,7 @@ async function chooseSource(replace = false) {
 async function startStreaming(replace = false) {
  if (replace && myStream && mediaMode==='sfu') await unpublishSFU();
  if (replace && myStream) {
+  stopApplicationAudioCapture();
   // Troca de fonte: para tracks antigas e recaptura
   myStream.getTracks().forEach(t => t.stop());
   myStream = null;
@@ -212,6 +214,7 @@ async function startStreaming(replace = false) {
 async function stopMyStream() {
  await unpublishSFU();
  if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; }
+ stopApplicationAudioCapture();
  try { await api('stop-stream'); } catch {}
  $('share-screen').hidden = false;
  diagnosticMessage='Transmissão encerrada.';toast('Compartilhamento encerrado.');
@@ -351,7 +354,7 @@ function updateParticipants(participants) {
  for(const p of participants)participantNames.set(p.id,p.name);
  requests.clear();if(['owner','admin'].includes(role))for(const p of participants)if(!p.approved)requests.set(p.id,{id:p.id,name:p.name});
  updateRequestsUI(false);renderStreams();
- $('count').textContent=participants.filter(p=>p.approved).length+' / 6';$('empty-participants').hidden=participants.some(p=>p.id!==myId&&p.approved);
+ $('count').textContent=participants.filter(p=>p.approved).length+' / 12';$('empty-participants').hidden=participants.some(p=>p.id!==myId&&p.approved);
  $('end-room').hidden=role!=='owner'||!administrationReady;
  const list=$('participants-list');list.replaceChildren();
  for(const p of participants.filter(p=>p.approved)){
@@ -375,8 +378,8 @@ function confirmAction(title,message,action){
 $('cancel-action').onclick=()=>$('confirm-action').close();
 function openParticipantMenu(participant,anchor){
  const menu=$('participant-menu');menu.replaceChildren();
- const add=(label,icon,route,confirm=false)=>{const button=document.createElement('button');button.append(createIcon(icon),document.createTextNode(label));button.setAttribute('role','menuitem');if(route==='remove')button.className='danger';button.onclick=()=>{menu.hidePopover();const action=async()=>{await api(route,{target:participant.id});toast('Ação concluída.');};if(confirm)confirmAction(label,label+' — '+participant.name+'?',action);else action().catch(error=>toast(error.message));};menu.append(button);};
- if(role==='owner'&&administrationReady){add(participant.role==='admin'?'Remover cargo de administrador':'Tornar administrador',participant.role==='admin'?'shield-minus':'shield-plus',participant.role==='admin'?'demote':'promote',participant.role==='admin');add('Transferir propriedade','arrow-right-left','transfer',true);}
+ const add=(label,icon,route,confirm=false)=>{const button=document.createElement('button');button.append(createIcon(icon),document.createTextNode(label));button.setAttribute('role','menuitem');if(route==='remove')button.className='danger';button.onclick=()=>{menu.hidePopover();const action=async()=>{if(['promote','demote','transfer'].includes(route)&&!administrationReady)throw Error('Esta ação exige a atualização da API para a versão 0.6.2.');await api(route,{target:participant.id});toast('Ação concluída.');};if(confirm)confirmAction(label,label+' — '+participant.name+'?',action);else action().catch(error=>toast(error.message));};menu.append(button);};
+ if(role==='owner'){add(participant.role==='admin'?'Remover cargo de administrador':'Tornar administrador',participant.role==='admin'?'shield-minus':'shield-plus',participant.role==='admin'?'demote':'promote',participant.role==='admin');add('Transferir propriedade','arrow-right-left','transfer',true);}
  if(role==='owner'||role==='admin'&&participant.role==='member')add('Remover da sala','user-round-x','remove',true);
  menu.showPopover();const rect=anchor.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(innerWidth-menu.offsetWidth-8,rect.right-menu.offsetWidth))+'px';menu.style.top=Math.max(8,Math.min(innerHeight-menu.offsetHeight-8,rect.bottom+5))+'px';menu.querySelector('button')?.focus();
 }
@@ -445,6 +448,7 @@ if(livekitRoom){livekitRoom.disconnect();livekitRoom=null;}localPublication=null
 for (const [, pc] of peers) pc.close();
 peers.clear(); remoteStreams.clear(); requests.clear();remotePaused.clear();
 if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; }
+ stopApplicationAudioCapture();
 token = null; role = null; roomCode = '';
 $('lobby').hidden = false; $('room').hidden = true;
 status('Desconectado');
@@ -539,9 +543,9 @@ toast(ok ? 'Código de convite copiado!' : 'Não foi possível copiar o código:
 } catch (e) { toast('Erro ao copiar link: ' + e.message); }
 };
 $('cancel-source').onclick = () => $('sources').close();
-$('sharing-settings').onclick=()=>$('settings').showModal();
+$('sharing-settings').onclick=()=>{$('settings').showModal();refreshAudioApplications().catch(error=>toast(error.message));};
 $('close-settings').onclick=()=>$('settings').close();
-$('toggle-participants').onclick=()=>{const hidden=document.querySelector('.room-layout').classList.toggle('panel-hidden');$('toggle-participants').setAttribute('aria-expanded',String(!hidden));};
+$('toggle-participants').onclick=()=>{const hidden=document.querySelector('.room-layout').classList.toggle('panel-hidden');$('toggle-participants').setAttribute('aria-expanded',String(!hidden));setControl('toggle-participants',hidden?'expand':'collapse',hidden?'Mostrar participantes':'Ocultar participantes');};
 
 $('name').value = localStorage.getItem('zullu-name') || '';
 const params = new URLSearchParams(location.search);
@@ -551,7 +555,7 @@ if (/^[A-Z2-9]{6}$/.test(c)) { $('code').value = c; $('tab-view').click(); toast
 else toast('Convite inválido.');
 history.replaceState(null, '', location.pathname);
 }
-window.addEventListener('pagehide', () => { if (token&&(role!=='owner'||administrationReady)) fetch(base + '/api/leave', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: '{}', keepalive: true }).catch(() => {}); myStream?.getTracks().forEach(t => t.stop()); });
+window.addEventListener('pagehide', () => {stopApplicationAudioCapture(); if (token&&(role!=='owner'||administrationReady)) fetch(base + '/api/leave', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: '{}', keepalive: true }).catch(() => {}); myStream?.getTracks().forEach(t => t.stop()); });
 
 // Inicialização: carrega preferências persistidas (Electron ou localStorage)
 (async () => {
@@ -573,14 +577,14 @@ window.addEventListener('pagehide', () => { if (token&&(role!=='owner'||administ
  } catch (e) { console.warn('Falha ao carregar config:', e); }
 })();
 
-const icons={screen:'monitor-up',settings:'sliders-horizontal',swap:'replace',pause:'pause',play:'play',stop:'square',focus:'panels-top-left',grid:'layout-grid',maximize:'maximize',minimize:'minimize',leave:'log-out',users:'users',volume:'volume-2',volumeOff:'volume-x',end:'power'};
+const icons={screen:'monitor-up',settings:'sliders-horizontal',swap:'replace',pause:'pause',play:'play',stop:'square',focus:'panels-top-left',grid:'layout-grid',maximize:'maximize',minimize:'minimize',leave:'log-out',users:'users',volume:'volume-2',volumeOff:'volume-x',end:'power',copy:'copy',collapse:'chevron-right',expand:'chevron-left'};
 function setControl(id,icon,label){
  const button=$(id);button.replaceChildren();button.dataset.tooltip=label;button.removeAttribute('title');button.setAttribute('aria-label',label);
  if(button.hasAttribute('aria-describedby')&&!$('app-tooltip').hidden)$('app-tooltip').textContent=label;
  button.append(createIcon(icons[icon]));
  if(id==='share-screen'){const text=document.createElement('span');text.textContent=label;button.append(text);}
 }
-for(const [id,icon,label] of [['share-screen','screen','Compartilhar tela'],['sharing-settings','settings','Qualidade e FPS'],['mute-stream-audio','volumeOff','Configurar áudio da transmissão'],['swap-screen','swap','Trocar fonte de captura'],['pause','pause','Pausar transmissão'],['stop-stream','stop','Encerrar transmissão'],['toggle-layout','focus','Modo Foco'],['fullscreen','maximize','Entrar em tela cheia'],['end-room','end','Encerrar sala para todos'],['leave','leave','Sair da sala'],['toggle-participants','users','Mostrar ou ocultar participantes']])setControl(id,icon,label);
+for(const [id,icon,label] of [['share-screen','screen','Compartilhar tela'],['sharing-settings','settings','Qualidade e FPS'],['mute-stream-audio','volumeOff','Configurar áudio da transmissão'],['swap-screen','swap','Trocar fonte de captura'],['pause','pause','Pausar transmissão'],['stop-stream','stop','Encerrar transmissão'],['toggle-layout','focus','Modo Foco'],['fullscreen','maximize','Entrar em tela cheia'],['end-room','end','Encerrar sala para todos'],['leave','leave','Sair da sala'],['toggle-participants','collapse','Ocultar participantes'],['copy-link','copy','Copiar código de convite']])setControl(id,icon,label);
 
 // Keep equal landscape tiles within the space available, rather than stretching rows.
 function fitStreamCards(){
@@ -622,7 +626,7 @@ document.addEventListener('focusout',hideTooltip);document.addEventListener('poi
 document.addEventListener('keydown',event=>{if(event.key==='Escape')hideTooltip();});window.addEventListener('resize',hideTooltip);
 
 $('mute-stream-audio').onclick=async()=>{
- if(!myStream?.getAudioTracks().some(track=>track.readyState==='live')){$('settings').showModal();return;}
+ if(!myStream?.getAudioTracks().some(track=>track.readyState==='live')){$('settings').showModal();refreshAudioApplications().catch(error=>toast(error.message));return;}
  const button=$('mute-stream-audio');button.disabled=true;
  try{const next=!localAudioMuted;if(localAudioPublication)await(next?localAudioPublication.track.mute():localAudioPublication.track.unmute());myStream.getAudioTracks().forEach(track=>track.enabled=!next);localAudioMuted=next;updateLayout();updateAudioBorders();}
  catch(error){console.error(error);toast('Não foi possível alterar o áudio.');}finally{button.disabled=false;}
@@ -674,7 +678,7 @@ $('settings-share-audio').addEventListener('change',()=>configureSharedAudio($('
 // Custom listboxes replace the operating system's select menus.
 const styledSelects=[];
 function refreshSelects(){for(const item of styledSelects)item.refresh();}
-for(const select of document.querySelectorAll('#settings select')){
+for(const select of document.querySelectorAll('select')){
  const label=document.querySelector('label[for="'+select.id+'"]');
  const wrapper=document.createElement('div');wrapper.className='app-select';select.after(wrapper);select.hidden=true;
  const trigger=document.createElement('button');trigger.type='button';trigger.className='select-trigger';trigger.id=select.id+'-trigger';
@@ -683,12 +687,12 @@ for(const select of document.querySelectorAll('#settings select')){
  const value=document.createElement('span'),chevron=document.createElement('span');chevron.textContent='⌄';chevron.setAttribute('aria-hidden','true');trigger.append(value,chevron);
  const menu=document.createElement('div');menu.className='select-options';menu.id=select.id+'-options';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label',label?.textContent||'Opções');trigger.setAttribute('aria-controls',menu.id);
  const close=(restore=false)=>{menu.hidden=true;trigger.setAttribute('aria-expanded','false');if(restore)trigger.focus();};
- const refresh=()=>{value.textContent=select.selectedOptions[0]?.textContent||'';for(const [index,option] of [...menu.children].entries()){const chosen=select.selectedIndex===index;option.setAttribute('aria-selected',String(chosen));option.tabIndex=chosen?0:-1;}};
- for(const [index,option] of [...select.options].entries()){
+ const refresh=()=>{if(menu.children.length!==select.options.length||[...menu.children].some((button,index)=>button.textContent!==select.options[index]?.textContent))buildOptions();value.textContent=select.selectedOptions[0]?.textContent||'';for(const [index,option] of [...menu.children].entries()){const chosen=select.selectedIndex===index;option.setAttribute('aria-selected',String(chosen));option.tabIndex=chosen?0:-1;}};
+ function buildOptions(){menu.replaceChildren();for(const [index,option] of [...select.options].entries()){
   const button=document.createElement('button');button.type='button';button.setAttribute('role','option');button.textContent=option.textContent;
   button.onclick=()=>{select.value=option.value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);};
   button.onkeydown=event=>{let next=index;if(event.key==='ArrowDown')next=(index+1)%menu.children.length;else if(event.key==='ArrowUp')next=(index+menu.children.length-1)%menu.children.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=menu.children.length-1;else if(event.key==='Escape'){event.preventDefault();close(true);return;}else if(event.key==='Tab'){close();return;}else return;event.preventDefault();menu.children[next].focus();};menu.append(button);
- }
+ }}
  const open=()=>{for(const item of styledSelects)item.close();menu.hidden=false;trigger.setAttribute('aria-expanded','true');menu.classList.toggle('opens-up',trigger.getBoundingClientRect().bottom+menu.offsetHeight>innerHeight-20);menu.children[select.selectedIndex]?.focus();};
  trigger.onclick=()=>menu.hidden?open():close();trigger.onkeydown=event=>{if(['ArrowDown','ArrowUp','Enter',' '].includes(event.key)){event.preventDefault();open();}};
  wrapper.append(trigger,menu);styledSelects.push({refresh,close});select.addEventListener('change',refresh);refresh();
@@ -697,21 +701,42 @@ for(const select of document.querySelectorAll('#settings select')){
 $('settings').addEventListener('close',()=>{for(const item of styledSelects)item.close();});
 
 let audioCapturePromise=null;
+let appAudioContext=null,appAudioNode=null,appAudioSession=null,appAudioDestination=null;
+async function stopApplicationAudioCapture(){
+ appAudioSession=null;appAudioNode?.disconnect();appAudioNode=null;appAudioDestination=null;
+ if(appAudioContext){appAudioContext.close().catch(()=>{});appAudioContext=null;}
+ await window.zulluDesktop?.stopApplicationAudio?.().catch(()=>{});
+}
 async function acquireSystemAudio(){
- if(!myStream||!captureSourceId||!window.zulluDesktop)throw Error('Selecione uma fonte no aplicativo desktop.');
+ if(!myStream||!window.zulluDesktop?.startApplicationAudio)throw Error('Captura por aplicativo disponível apenas no Windows compatível.');
+ const pid=Number($('audio-application').value);if(!Number.isSafeInteger(pid)||pid<=0)throw Error('Escolha o aplicativo que deve fornecer áudio.');
  if(myStream.getAudioTracks().some(track=>track.readyState==='live'))return;
  if(audioCapturePromise)return audioCapturePromise;
  const target=myStream;
  audioCapturePromise=(async()=>{
-  await window.zulluDesktop.selectSource(captureSourceId);
-  const capture=await navigator.mediaDevices.getDisplayMedia({video:true,audio:{restrictOwnAudio:true}});
-  // Electron requires a video grant to obtain loopback audio; discard that temporary video.
-  capture.getVideoTracks().forEach(track=>track.stop());
-  const tracks=capture.getAudioTracks();if(target!==myStream){tracks.forEach(track=>track.stop());return;}
-  if(!tracks.length)throw Error('Áudio geral indisponível neste dispositivo.');
-  for(const track of tracks)target.addTrack(track);
- })();try{await audioCapturePromise;}finally{audioCapturePromise=null;}
+  await stopApplicationAudioCapture();
+  appAudioContext=new AudioContext({sampleRate:48000});await appAudioContext.audioWorklet.addModule('/app-audio-worklet.js');
+  appAudioNode=new AudioWorkletNode(appAudioContext,'zillu-application-audio',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2]});appAudioDestination=appAudioContext.createMediaStreamDestination();appAudioNode.connect(appAudioDestination);await appAudioContext.resume();
+  const session=await window.zulluDesktop.startApplicationAudio(pid);
+  if(target!==myStream){await stopApplicationAudioCapture();return;}
+  appAudioSession=session.id;
+  for(const track of appAudioDestination.stream.getAudioTracks()){track.contentHint='music';target.addTrack(track);}
+ })();try{await audioCapturePromise;}catch(error){await stopApplicationAudioCapture();throw error;}finally{audioCapturePromise=null;}
 }
+window.zulluDesktop?.onApplicationAudio?.(data=>{if(data.id!==appAudioSession||!appAudioNode)return;const bytes=data.pcm;const samples=new Float32Array(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));appAudioNode.port.postMessage(samples,[samples.buffer]);});
+window.zulluDesktop?.onApplicationAudioEnded?.(data=>{if(data.id!==appAudioSession)return;for(const track of myStream?.getAudioTracks()||[]){track.stop();myStream.removeTrack(track);}stopApplicationAudioCapture();unpublishEndedAudio();toast('O aplicativo de áudio foi encerrado.');});
+async function unpublishEndedAudio(){if(localAudioPublication&&livekitRoom)try{await livekitRoom.localParticipant.unpublishTrack(localAudioPublication.track);}catch{}localAudioPublication=null;updateLayout();syncAudioMeters();}
+async function refreshAudioApplications(){
+ if(!window.zulluDesktop?.audioApplications)return;
+ const apps=await window.zulluDesktop.audioApplications(),previous=$('audio-application').value;
+ for(const id of ['audio-application','source-audio-application']){const select=$(id);select.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent=apps.length?'Escolha o player, navegador ou jogo':'Nenhum aplicativo disponível';select.append(placeholder);for(const app of apps){const option=document.createElement('option');option.value=String(app.pid);option.textContent=app.name+' · '+app.process;select.append(option);}if(apps.some(app=>String(app.pid)===previous))select.value=previous;}
+ const supported=await window.zulluDesktop.getSystemAudioSupport();$('settings-share-audio').disabled=!supported;$('share-audio').disabled=!supported;
+ $('audio-isolation-status').textContent=supported?'Somente o aplicativo escolhido será ouvido. Chamadas em outras abas do mesmo navegador pertencem ao mesmo aplicativo.':'Áudio por aplicativo indisponível neste Windows. Compartilhe a tela sem áudio.';
+ refreshSelects();
+}
+$('refresh-audio-apps').onclick=()=>refreshAudioApplications().catch(error=>toast(error.message));
+for(const id of ['audio-application','source-audio-application'])$(id).addEventListener('change',async()=>{const value=$(id).value;for(const other of ['audio-application','source-audio-application'])$(other).value=value;refreshSelects();if(id==='audio-application'&&myStream?.getAudioTracks().some(track=>track.readyState==='live')){await configureSharedAudio(false);await configureSharedAudio(true);}});
+
 async function publishAudioSFU(stream=myStream){
  if(audioPublishPromise)return audioPublishPromise;
  const track=stream?.getAudioTracks().find(track=>track.readyState==='live'),room=livekitRoom;
@@ -729,7 +754,7 @@ async function configureSharedAudio(enabled){
   if(myStream){
    if(!enabled&&audioPublishPromise)await audioPublishPromise;
    if(enabled){await acquireSystemAudio();if(mediaMode==='sfu')await publishAudioSFU();localAudioMuted=false;}
-   else{if(localAudioPublication&&livekitRoom)await livekitRoom.localParticipant.unpublishTrack(localAudioPublication.track);localAudioPublication=null;for(const track of myStream.getAudioTracks()){track.stop();myStream.removeTrack(track);}localAudioMuted=false;}
+   else{await stopApplicationAudioCapture();if(localAudioPublication&&livekitRoom)await livekitRoom.localParticipant.unpublishTrack(localAudioPublication.track);localAudioPublication=null;for(const track of myStream.getAudioTracks()){track.stop();myStream.removeTrack(track);}localAudioMuted=false;}
    if(mediaMode==='p2p')for(const [id,pc] of peers){for(const sender of pc.getSenders())if(sender.track?.kind==='audio')pc.removeTrack(sender);for(const track of myStream.getAudioTracks())pc.addTrack(track,myStream);const offer=await pc.createOffer();await pc.setLocalDescription(offer);await api('signal',{target:id,data:offer});}
   }
   audioEnabled=enabled;$('share-audio').checked=enabled;$('settings-share-audio').checked=enabled;updateLayout();syncAudioMeters();

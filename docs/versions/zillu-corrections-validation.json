@@ -1,0 +1,13 @@
+{
+  "capacity": "2 / 12",
+  "requestsAboveParticipants": true,
+  "copyIcon": true,
+  "sidebarArrows": true,
+  "adminAboveRemoval": true,
+  "native": {
+    "active": true,
+    "videoPreserved": true,
+    "audioStopped": true
+  },
+  "errors": []
+}

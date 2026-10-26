@@ -36,3 +36,11 @@ body:has(#lobby:not([hidden])) footer>span:first-child{visibility:hidden}
 
 .participant-item strong{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.4}
 .control-buttons button[aria-pressed="true"]{background:#263f65;border-color:#5c91de;color:#d9e8ff}.control-buttons button.audio-muted{background:#3b222b;border-color:#a04e59;color:#ffb6bd}
+
+#requests-panel{padding-bottom:16px;margin-bottom:18px;border-bottom:1px solid var(--border)}#requests-panel h3{display:flex;justify-content:space-between;margin:0 0 10px}#copy-link{min-width:40px;padding:10px}#copy-link .icon{width:18px;height:18px}
+
+#settings .select-trigger span:first-child,#sources .select-trigger span:first-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}#sources .dialog-bottom>div{flex:1;min-width:0}#sources .app-select{max-width:430px}.select-options button{white-space:normal;overflow-wrap:anywhere}
+
+#refresh-audio-apps{margin-top:10px}
+
+@media(max-width:900px){#copy-link{display:inline-flex}}

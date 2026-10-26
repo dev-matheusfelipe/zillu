@@ -5,11 +5,12 @@
   "description": "Compartilhamento de tela por código",
   "main": "electron.cjs",
   "scripts": {
-    "start": "npm run build:web && electron .",
+    "start": "npm run build:native && npm run build:web && electron .",
     "server": "node server.cjs",
     "test": "node --test test/*.test.cjs",
-    "dist:win": "npm run build:web && electron-builder --win portable --x64",
-    "build:web": "node scripts/build-web.cjs"
+    "dist:win": "npm run build:native && npm run build:web && electron-builder --win portable --x64",
+    "build:web": "node scripts/build-web.cjs",
+    "build:native": "node scripts/build-native-audio.cjs"
   },
   "devDependencies": {
     "electron": "45.0.0",
@@ -30,13 +31,20 @@
       "cloud-server.cjs",
       "backend/api/index.js",
       "backend/lib/**/*",
-      "backend/sfu/token.cjs"
+      "backend/sfu/token.cjs",
+      "app-audio.cjs"
     ],
     "win": {
       "target": "portable",
       "icon": "public/zillu.ico"
     },
-    "artifactName": "Zillu-${version}-${arch}.${ext}"
+    "artifactName": "Zillu-${version}-${arch}.${ext}",
+    "extraResources": [
+      {
+        "from": "native/bin/zillu-audio.exe",
+        "to": "zillu-audio.exe"
+      }
+    ]
   },
   "dependencies": {
     "electron-store": "^8.2.0",

@@ -4,7 +4,7 @@ const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
 const API_ORIGIN='https://zillu-backend.vercel.app';
-const ASSETS={'/icons.svg':'icons.svg','/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png','/':'index.html','/app.js':'app.js','/style.css':'style.css','/refinements.css':'refinements.css','/livekit.bundle.js':'livekit.bundle.js'};
+const ASSETS={'/app-audio-worklet.js':'app-audio-worklet.js','/icons.svg':'icons.svg','/logo-simbolo1.png':'logo-simbolo1.png','/logo-simbolo2.png':'logo-simbolo2.png','/':'index.html','/app.js':'app.js','/style.css':'style.css','/refinements.css':'refinements.css','/livekit.bundle.js':'livekit.bundle.js'};
 const TYPES={'.svg':'image/svg+xml','.png':'image/png','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
 function createCloudServer(options={}){
  const fetchImpl=options.fetchImpl||fetch;

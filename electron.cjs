@@ -11,6 +11,7 @@ for(const legacyName of ['Zullu','zullu-screen']){
 
 const store=new Store({name:'zullu-config',defaults:{serverUrl:'',lastName:'',lastQuality:'low',lastFps:30}});
 let server,win,localOrigin,remoteUrl=null,selected;
+const applicationAudio=require('./app-audio.cjs').createApplicationAudio({app,send:(channel,payload)=>{if(win&&!win.isDestroyed())win.webContents.send(channel,payload);}});
 const sameOrigin=(value,allowed)=>{try{return !!allowed&&new URL(value).origin===new URL(allowed).origin;}catch{return false;}};
 const isTrusted=e=>{
  if(!win||e.sender!==win.webContents)return false;
@@ -37,7 +38,10 @@ app.whenReady().then(async()=>{
  ipcMain.handle('sources',async e=>{if(!isTrusted(e))throw Error('Origem inválida');return(await desktopCapturer.getSources({types:['screen','window'],thumbnailSize:{width:240,height:135}})).map(s=>({id:s.id,name:s.name,thumbnail:s.thumbnail.toDataURL()}));});
  ipcMain.handle('select-source',(e,id)=>{if(!isTrusted(e)||typeof id!=='string'||id.length>256)throw Error('Origem inválida');selected=id;});
  ipcMain.handle('replace-source',async(e,id)=>{if(!isTrusted(e)||typeof id!=='string'||id.length>256)throw Error('Origem inválida');selected=id;return{ok:true,requiresRecapture:true};});
- ipcMain.handle('system-audio-support',()=>process.platform==='win32');
+ ipcMain.handle('system-audio-support',e=>{if(!isTrusted(e))throw Error('Origem inválida');return applicationAudio.supported();});
+ ipcMain.handle('audio-applications',e=>{if(!isTrusted(e))throw Error('Origem inválida');return applicationAudio.list();});
+ ipcMain.handle('start-app-audio',(e,pid)=>{if(!isTrusted(e))throw Error('Origem inválida');return applicationAudio.start(pid);});
+ ipcMain.handle('stop-app-audio',e=>{if(!isTrusted(e))throw Error('Origem inválida');applicationAudio.stop();return true;});
  ipcMain.handle('clipboard-write',(e,text)=>{if(!isTrusted(e)){console.error('[IPC] clipboard-write rejeitado: origem não confiável');throw Error('Origem inválida');}if(typeof text!=='string'||text.length>2048)throw Error('Conteúdo inválido');require('electron').clipboard.writeText(text);console.log('[Electron] Clipboard escrito com sucesso.');return true;});
 ipcMain.handle('notify-request',(e,name)=>{if(!isTrusted(e))return;if(win.isMinimized())win.restore();win.focus();win.flashFrame(true);setTimeout(()=>win.flashFrame(false),4000);});
  const ses=session.defaultSession;
@@ -63,12 +67,15 @@ ipcMain.handle('notify-request',(e,name)=>{if(!isTrusted(e))return;if(win.isMini
    if(!source){console.warn('[Electron] Fonte selecionada não encontrada');return callback(null);}
    // Electron 45: o callback recebe DesktopCapturerSource ({id,name}), NÃO uma MediaStreamTrack.
    // Áudio não solicitado é omitido; false não é um valor válido de audio neste callback.
-   if(request.audioRequested&&process.platform==='win32')callback({video:source,audio:'loopback'});
-   else callback({video:source});
+   // Audio is captured exclusively by the process-isolated WASAPI helper.
+   if(request.audioRequested)return callback(null);
+   callback({video:source});
    console.log('[Electron] Fonte autorizada', {id:source.id,name:source.name});
   }catch(error){console.error('[Electron] Erro na captura',error);callback(null);}
  });
  win=new BrowserWindow({width:1280,height:850,minWidth:860,minHeight:680,title:'Zillu',titleBarStyle:'hidden',titleBarOverlay:{color:'#10141c',symbolColor:'#edf1f8',height:32},icon:path.join(__dirname,'public','zillu.ico'),backgroundColor:'#0c111b',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win.on('closed',()=>applicationAudio.stop());
+ win.webContents.on('render-process-gone',()=>applicationAudio.stop());
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',(event,url)=>{
   const allowed=[localOrigin+'/',remoteUrl&&remoteUrl+'/'].filter(Boolean);
@@ -80,4 +87,4 @@ ipcMain.handle('notify-request',(e,name)=>{if(!isTrusted(e))return;if(win.isMini
  await win.loadURL(localOrigin+'/');
 });
 app.on('window-all-closed',()=>app.quit());
-app.on('before-quit',()=>{server?.close();server?.closeAllConnections?.();});
+app.on('before-quit',()=>{applicationAudio.stop();server?.close();server?.closeAllConnections?.();});

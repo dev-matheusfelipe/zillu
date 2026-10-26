@@ -1,5 +1,7 @@
 # Zillu v0.6.2 — participantes, áudio e administração
 
+Atualização posterior: [correções e captura nativa por aplicativo](ZILLU-V0.6.2-CORRECOES.md). Esse complemento substitui a limitação de áudio geral descrita no relatório original abaixo. O executável anterior não foi regenerado nesta revisão.
+
 Implementação no projeto `D:\zillu`, conferida em 26/10/2026. API de produção preservada em `https://zillu-backend.vercel.app`. Não foi feito push nem deploy.
 
 ## Conferência do pedido
