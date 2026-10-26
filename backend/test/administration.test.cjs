@@ -54,7 +54,7 @@ test('media revocations persist and retry; forged failures do not roll back Redi
  assert.equal(await flushMediaJob(f.db,livekit,async()=>{throw Error('offline')}),false);assert(await f.db.cmd('LINDEX','z:media-jobs',-1));
  let job;await flushMediaJob(f.db,livekit,async(_config,item)=>{job=item;});assert.equal(job.method,'RemoveParticipant');assert.equal(job.identity,f.users[1].id);assert.equal(await f.db.cmd('LINDEX','z:media-jobs',-1),null);
 });
-test('persisted pre-0.6.2 room acquires safe defaults without changing identifiers',async()=>{
+test('persisted pre-0.6.3 room acquires safe defaults without changing identifiers',async()=>{
  const f=await fixture(2);const room=await f.db.json(keys.room(f.code));delete room.admins;delete room.denied;delete room.revision;await f.db.set(keys.room(f.code),room);await f.op(0,'approve',{target:f.users[1].id});await f.op(0,'promote',{target:f.users[1].id});assert.deepEqual((await f.db.json(keys.room(f.code))).admins,[f.users[1].id]);
 });
 

@@ -33,12 +33,12 @@ class RoomService{
     if(actor.room)fail('Saia da sala atual primeiro');
     const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const generated=Array.from({length:6},()=>alphabet[randomInt(alphabet.length)]).join('');
     if(await read(keys.room(generated))||await read(keys.reserve(generated)))continue;
-    room={code:generated,owner:actor.id,admins:[],members:[],streamers:[],denied:[],revision:0};actor.room=generated;actor.approved=true;save(actor);put(keys.reserve(generated),'active');changed=true;result={code:generated,role:'owner',apiVersion:'0.6.2'};
+    room={code:generated,owner:actor.id,admins:[],members:[],streamers:[],denied:[],revision:0};actor.room=generated;actor.approved=true;save(actor);put(keys.reserve(generated),'active');changed=true;result={code:generated,role:'owner',apiVersion:'0.6.3'};
    }else if(route==='join'){
     if(actor.room)fail('Saia da sala atual primeiro');if(!room)fail('Sala não encontrada ou encerrada',404);
     if(room.denied.includes(actor.id))fail('Entre novamente para solicitar acesso com uma nova sessão.',403);
     if(roomIds(room).length>=MAX_PARTICIPANTS)fail('Sala cheia',409);
-    room.members.push(actor.id);actor.room=room.code;actor.approved=false;save(actor);changed=true;result={code:room.code,role:'member',apiVersion:'0.6.2'};
+    room.members.push(actor.id);actor.room=room.code;actor.approved=false;save(actor);changed=true;result={code:room.code,role:'member',apiVersion:'0.6.3'};
     for(const id of roomIds(room))if(['owner','admin'].includes(roleOf(room,id)))emit(id,{type:'request',id:actor.id,name:actor.name});
    }else if(route==='heartbeat'){
     if(actor.room&&!room){actor.room=null;actor.approved=false;save(actor);emit(actor.id,{type:'ended'});}
@@ -91,7 +91,7 @@ class RoomService{
     if(actor.approved)put(keys.reserve(room.code),'active');
     if(changed||route==='create'){
      const participants=roomIds(room).map(id=>sessions.get(id)).filter(s=>s&&s.room===room.code).map(s=>({id:s.id,name:s.name,approved:s.approved,role:roleOf(room,s.id),streaming:room.streamers.includes(s.id)}));
-     for(const p of participants)if(p.approved)emit(p.id,{type:'room-state',participants,revision:room.revision,apiVersion:'0.6.2'});
+     for(const p of participants)if(p.approved)emit(p.id,{type:'room-state',participants,revision:room.revision,apiVersion:'0.6.3'});
     }
    }
    if(await this.db.commit({expected:[...expected],writes:[...writes],events,jobs})){return result;}

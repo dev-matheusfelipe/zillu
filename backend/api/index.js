@@ -14,7 +14,7 @@ function createHandler({dbFactory=()=>new RedisStore(),livekit,pollIterations=16
    const parsed=new URL(req.url,'https://zillu.invalid'),route=String(req.query?.route||parsed.searchParams.get('route')||parsed.pathname.replace(/^\/api\//,'')).trim();
    const body=await readJsonBody(req),db=dbFactory(),config=livekit===undefined?livekitConfig():livekit;
    const service=new RoomService(db,{livekit:config});
-   if(route==='health')return end(res,200,{ok:true,service:'zillu-api',apiVersion:'0.6.2',mediaMode:config?'sfu':'p2p'});
+   if(route==='health')return end(res,200,{ok:true,service:'zillu-api',apiVersion:'0.6.3',mediaMode:config?'sfu':'p2p'});
    if(route==='connect')return end(res,200,await service.connect(body.name));
    const token=(req.headers.authorization||'').replace(/^Bearer /,'');
    if(route==='diagnose-room'){

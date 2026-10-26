@@ -1,16 +1,16 @@
-# Zillu API v0.6.2
+# Zillu API v0.6.3
 
 Backend Node para Vercel, com Upstash Redis e autorização LiveKit. O gateway Electron usa `https://zillu-backend.vercel.app`; nenhuma credencial de infraestrutura vai ao renderer ou ao executável.
 
 ## Preparação para deploy
 
-A API 0.6.2 foi publicada com autorização em 26/10/2026; ver [relatório de publicação](../docs/versions/ZILLU-V0.6.2-PUBLICACAO.md). Configurar o projeto Vercel com **Root Directory `backend`** e Node >=20. As variáveis continuam sendo `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `LIVEKIT_URL`, `LIVEKIT_API_KEY` e `LIVEKIT_API_SECRET`. `ZULLU_ALLOWED_ORIGIN` é opcional e mantém o nome histórico; não inserir segredos no frontend.
+A API 0.6.3 foi publicada com autorização em 26/10/2026; ver [relatório de publicação](../docs/versions/ZILLU-V0.6.3-PUBLICACAO.md). Configurar o projeto Vercel com **Root Directory `backend`** e Node >=20. As variáveis continuam sendo `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `LIVEKIT_URL`, `LIVEKIT_API_KEY` e `LIVEKIT_API_SECRET`. `ZULLU_ALLOWED_ORIGIN` é opcional e mantém o nome histórico; não inserir segredos no frontend.
 
 Publicar todos os arquivos deste diretório, incluindo `lib/room-service.cjs`, `lib/transaction.cjs`, `lib/livekit.cjs` e a versão atual de `lib/redis.cjs`. Manter o rewrite de `vercel.json`. O Redis precisa aceitar `EVAL`, `SET ... KEEPTTL` e comandos de listas. As mutações são atômicas via Lua/CAS sobre todos os registros observados, incluindo notificações e fila de revogação.
 
-Após deploy autorizado, `POST /api/health` deve informar `apiVersion: "0.6.2"`. Validar em preview antes da produção: criar, solicitar entrada, aprovar, promover, aprovar por admin, tentar ações proibidas, transferir, sair e encerrar explicitamente. Admin usa `approve`/`remove`; owner acrescenta `promote`, `demote`, `transfer` e `end-room`, sempre com Bearer token. Não enviar papel como forma de autorização.
+Após deploy autorizado, `POST /api/health` deve informar `apiVersion: "0.6.3"`. Validar em preview antes da produção: criar, solicitar entrada, aprovar, promover, aprovar por admin, tentar ações proibidas, transferir, sair e encerrar explicitamente. Admin usa `approve`/`remove`; owner acrescenta `promote`, `demote`, `transfer` e `end-room`, sempre com Bearer token. Não enviar papel como forma de autorização.
 
-A mudança da semântica de `leave` exige o backend novo. O cliente 0.6.2 só libera cargos e encerramento explícito quando a API informa suporte e bloqueia a ação comum de saída do dono em API antiga. Distribuir o novo desktop após validar o backend. Durante a transição, encerrar sessões antigas ou aguardar o término das requisições antigas para não misturar handlers legados sem CAS com a nova versão. Estruturas antigas recebem `admins`, `denied` e `revision` de forma compatível na primeira operação.
+A mudança da semântica de `leave` exige o backend novo. O cliente 0.6.3 só libera cargos e encerramento explícito quando a API informa suporte e bloqueia a ação comum de saída do dono em API antiga. Distribuir o novo desktop após validar o backend. Durante a transição, encerrar sessões antigas ou aguardar o término das requisições antigas para não misturar handlers legados sem CAS com a nova versão. Estruturas antigas recebem `admins`, `denied` e `revision` de forma compatível na primeira operação.
 
 ## Ciclo de vida
 
@@ -24,7 +24,7 @@ Tokens de entrada expiram em 120 segundos. A remoção persiste a proibição da
 
 Use **LiveKit Cloud com revogação de tokens** quando for necessário impedir reentrada com token emitido anteriormente. Segundo a documentação oficial, remoção no self-hosted não invalida tokens já emitidos; o TTL curto reduz essa janela, mas não substitui revogação. A API não garante revogação imediata em caso de indisponibilidade do RoomService nem em servidor próprio. A fila depende de novas requisições para repetir falhas; sem atividade, um agendador operacional seria necessário para repetição independente. Não configurar um cron apontando à API pública sem autenticação própria.
 
-Referências: [tokens e revogação LiveKit](https://docs.livekit.io/frontends/reference/tokens-grants/), [documentação de versão](../docs/versions/ZILLU-V0.6.2.md).
+Referências: [tokens e revogação LiveKit](https://docs.livekit.io/frontends/reference/tokens-grants/), [documentação de versão](../docs/versions/ZILLU-V0.6.3.md).
 
 ## Testes
 
